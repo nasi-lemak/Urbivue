@@ -6,10 +6,14 @@ import { Sidebar } from './components/Sidebar';
 import { MapView } from './components/MapView';
 import { AssetDrawer } from './components/AssetDrawer';
 import { OpsPanel } from './components/OpsPanel';
+import { Portal } from './components/Portal';
 import type { AssetFeature, AssetTypeInfo, FeatureCollection } from './types';
 
 export function App() {
   const { user, loading } = useAuth();
+
+  // The citizen portal is public: no session required.
+  if (window.location.pathname.startsWith('/portal')) return <Portal />;
 
   if (loading) return <div className="centered">Loading…</div>;
   if (!user) return <Login />;

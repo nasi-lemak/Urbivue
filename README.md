@@ -145,6 +145,9 @@ compliant / minor-issues / non-compliant status, failures land in the remediatio
 serves the public accessibility layer). A public flood feed (`GET /api/public/flood-status`)
 classifies every station against the configured thresholds for the portal's advisory banner.
 
-Remaining for Phase 4: the public portal web UI (map + report form over the existing public
-API). Deferred niceties: Timescale continuous aggregates, email notifications, offline-queueing
+The public portal is live at `/portal` (no login): a citizen-facing map with the flood
+advisory banner, river stations colored by status, flood-risk zones, public toilets (tap for
+hours, rating, last-cleaned), and the accessibility layer colored by compliance — plus the
+report form (pick a category, tap the map, submit, get a tracking ID) and report status
+tracking. Deferred niceties: Timescale continuous aggregates, email notifications, offline-queueing
 for crew forms, and map clustering for large fleets.
