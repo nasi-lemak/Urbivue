@@ -17,6 +17,10 @@ import { SlopesModule } from './modules/slopes/slopes.module';
 import { LightingModule } from './modules/lighting/lighting.module';
 import { BinsModule } from './modules/bins/bins.module';
 import { TrafficModule } from './modules/traffic/traffic.module';
+import { TreesModule } from './modules/trees/trees.module';
+import { ToiletsModule } from './modules/toilets/toilets.module';
+import { AccessibilityModule } from './modules/accessibility/accessibility.module';
+import { FloodPublicModule } from './modules/flood/flood-public.module';
 import { HealthController } from './platform/health.controller';
 
 @Module({
@@ -35,6 +39,10 @@ import { HealthController } from './platform/health.controller';
     LightingModule,
     BinsModule,
     TrafficModule,
+    TreesModule,
+    ToiletsModule,
+    AccessibilityModule,
+    FloodPublicModule,
   ],
   controllers: [HealthController],
   providers: [

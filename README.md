@@ -15,9 +15,9 @@ core** with pluggable **domain modules**:
 | Street Lighting | 🟢 In progress | Poles & luminaires, outage detection, energy usage |
 | Waste Bins | 🟢 In progress | Bin inventory, fill levels, collection routing |
 | Traffic Counters | 🟢 In progress | Count stations, traffic time-series & analytics |
-| Tree Management | ⚪ Phase 4 | Tree inventory, health & risk inspections, pruning |
-| Public Toilets | ⚪ Phase 4 | Facility registry, cleaning schedules, service quality |
-| Accessible Facilities | ⚪ Phase 4 | Ramps, tactile paving, accessible amenities & audits |
+| Tree Management | 🟢 In progress | Tree inventory, health & risk inspections, pruning |
+| Public Toilets | 🟢 In progress | Facility registry, cleaning schedules, service quality |
+| Accessible Facilities | 🟢 In progress | Ramps, tactile paving, accessible amenities & audits |
 
 Every module reuses the same platform services — geospatial asset registry, sensor telemetry
 pipeline, inspections & work orders, alerting, citizen reports, and a map-first dashboard — so
@@ -133,5 +133,18 @@ nearest-neighbor from the depot with leg distances), and Traffic Counters
 API: station list and JSON/CSV count exports). Remaining for Phase 3: map
 clustering/vector-tile performance for large fleets, and bulk-import ergonomics.
 
-Deferred niceties: Timescale continuous aggregates (swap in for the bucketed query when chart
-volume demands), email notifications, and offline-queueing for crew forms.
+**Phase 4 is in progress — all ten modules are now live.** Tree Management (arborist risk
+assessments derive health/risk ratings, high-risk trees auto-escalate to arborist work orders,
+and `POST /api/trees/storm-campaign` generates emergency assessments for every high-risk tree
+after a storm), Public Toilets (cleaning check-ins stamp `lastCleanedAt`, broken fixtures open
+repair orders, and the public finder at `GET /api/public/toilets` shows hours, accessible
+fixtures, last-cleaned time, and community star ratings via
+`POST /api/public/toilets/:id/rating`), and Accessible Facilities (compliance audits derive
+compliant / minor-issues / non-compliant status, failures land in the remediation backlog at
+`GET /api/accessibility/backlog` with their work orders, and `GET /api/public/accessibility`
+serves the public accessibility layer). A public flood feed (`GET /api/public/flood-status`)
+classifies every station against the configured thresholds for the portal's advisory banner.
+
+Remaining for Phase 4: the public portal web UI (map + report form over the existing public
+API). Deferred niceties: Timescale continuous aggregates, email notifications, offline-queueing
+for crew forms, and map clustering for large fleets.

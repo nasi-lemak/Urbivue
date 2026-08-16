@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import {
   SubmitInspectionInput,
+  WorkOrderKind,
+  WorkOrderPriority,
   getInspectionTemplate,
   listInspectionTemplates,
   validateResponses,
@@ -120,50 +122,155 @@ export class InspectionsService implements OnModuleInit {
   }
 
   /**
-   * Module-specific reactions to a submitted inspection. Kept as a simple
-   * dispatch until the module-contract plumbing lands with Phase 2.
+   * Module-specific reactions to a submitted inspection, dispatched by
+   * template key. Each hook may update asset attributes and/or open a
+   * follow-up work order.
    */
   private async runModuleHooks(
     templateKey: string,
-    asset: { id: string; code: string; name: string; attributes: Record<string, unknown> },
+    asset: HookAsset,
     responses: Record<string, unknown>,
     inspectionId: string,
   ): Promise<{ workOrderId?: string }> {
-    if (templateKey !== 'drainage.condition') return {};
+    switch (templateKey) {
+      case 'drainage.condition':
+        return this.drainageHook(asset, responses, inspectionId);
+      case 'trees.risk_assessment':
+        return this.treesHook(asset, responses, inspectionId);
+      case 'toilets.cleaning_round':
+        return this.toiletsHook(asset, responses, inspectionId);
+      case 'accessibility.audit':
+        return this.accessibilityHook(asset, responses, inspectionId);
+      default:
+        return {};
+    }
+  }
 
-    const blockagePct = responses['blockagePct'];
-    if (typeof blockagePct !== 'number') return {};
+  private async mergeAttributes(assetId: string, patch: Record<string, unknown>): Promise<void> {
+    await this.db.query(`UPDATE assets SET attributes = attributes || $2::jsonb WHERE id = $1`, [
+      assetId,
+      JSON.stringify(patch),
+    ]);
+  }
 
-    // Keep the asset's map attributes in sync with the latest inspection.
-    await this.db.query(
-      `UPDATE assets SET attributes = attributes || jsonb_build_object('blockagePct', $2::numeric)
-       WHERE id = $1`,
-      [asset.id, blockagePct],
-    );
-
-    if (blockagePct < DRAIN_BLOCKAGE_WO_THRESHOLD) return {};
+  /** Open a follow-up work order unless the asset already has an active one. */
+  private async followUpWorkOrder(
+    asset: HookAsset,
+    inspectionId: string,
+    module: string,
+    input: {
+      kind: WorkOrderKind;
+      priority: WorkOrderPriority;
+      title: string;
+      description: string;
+    },
+  ): Promise<{ workOrderId?: string }> {
     if (await this.workOrders.hasActiveCorrective(asset.id)) {
-      this.logger.log(
-        `Blockage ${blockagePct}% on ${asset.code}: active work order already exists`,
-      );
+      this.logger.log(`${asset.code}: active work order already exists, not duplicating`);
       return {};
     }
-
     const wo = await this.workOrders.create(
       {
         assetId: asset.id,
-        kind: 'corrective',
-        priority: blockagePct >= 90 ? 'urgent' : 'high',
-        title: `Clean ${asset.code} — blockage at ${blockagePct}%`,
-        description: `Auto-created from inspection: ${asset.name} reported ${blockagePct}% blocked.`,
+        kind: input.kind,
+        priority: input.priority,
+        title: input.title,
+        description: input.description,
         inspectionId,
       },
       null,
     );
     this.notifications.notify('warning', `Work order ${wo.code} auto-created: ${wo.title}`, {
-      module: 'drainage',
+      module,
       assetCode: asset.code,
     });
     return { workOrderId: wo.id };
   }
+
+  private async drainageHook(
+    asset: HookAsset,
+    responses: Record<string, unknown>,
+    inspectionId: string,
+  ): Promise<{ workOrderId?: string }> {
+    const blockagePct = responses['blockagePct'];
+    if (typeof blockagePct !== 'number') return {};
+    await this.mergeAttributes(asset.id, { blockagePct });
+    if (blockagePct < DRAIN_BLOCKAGE_WO_THRESHOLD) return {};
+    return this.followUpWorkOrder(asset, inspectionId, 'drainage', {
+      kind: 'corrective',
+      priority: blockagePct >= 90 ? 'urgent' : 'high',
+      title: `Clean ${asset.code} — blockage at ${blockagePct}%`,
+      description: `Auto-created from inspection: ${asset.name} reported ${blockagePct}% blocked.`,
+    });
+  }
+
+  /** Derive health/risk ratings; high risk escalates to an arborist order. */
+  private async treesHook(
+    asset: HookAsset,
+    responses: Record<string, unknown>,
+    inspectionId: string,
+  ): Promise<{ workOrderId?: string }> {
+    const healthScore = responses['healthScore'];
+    if (typeof healthScore !== 'number') return {};
+    const defects = ['deadwood', 'cavities', 'rootDamage', 'leanChange'].filter(
+      (k) => responses[k] === true,
+    );
+    const riskRating =
+      defects.length >= 2 || healthScore <= 2 ? 'high' : defects.length === 1 ? 'medium' : 'low';
+    await this.mergeAttributes(asset.id, { healthRating: healthScore, riskRating });
+    if (riskRating !== 'high') return {};
+    return this.followUpWorkOrder(asset, inspectionId, 'trees', {
+      kind: 'corrective',
+      priority: responses['leanChange'] === true ? 'urgent' : 'high',
+      title: `Arborist action: ${asset.code} assessed high-risk`,
+      description: `Defects: ${defects.join(', ') || 'none'}; health ${healthScore}/5.`,
+    });
+  }
+
+  /** Stamp lastCleanedAt for the public map; broken fixtures open an order. */
+  private async toiletsHook(
+    asset: HookAsset,
+    responses: Record<string, unknown>,
+    inspectionId: string,
+  ): Promise<{ workOrderId?: string }> {
+    await this.mergeAttributes(asset.id, { lastCleanedAt: new Date().toISOString() });
+    if (responses['fixturesOk'] !== false) return {};
+    return this.followUpWorkOrder(asset, inspectionId, 'toilets', {
+      kind: 'corrective',
+      priority: 'medium',
+      title: `Fixture repair: ${asset.code}`,
+      description: `Cleaning check-in reported broken fixtures at ${asset.name}.`,
+    });
+  }
+
+  /** Derive compliance status; non-compliance lands in the remediation backlog. */
+  private async accessibilityHook(
+    asset: HookAsset,
+    responses: Record<string, unknown>,
+    inspectionId: string,
+  ): Promise<{ workOrderId?: string }> {
+    const checks = ['slopeOk', 'widthOk', 'surfaceOk', 'signageOk'];
+    const failures = checks.filter((k) => responses[k] === false);
+    const complianceStatus =
+      failures.length === 0
+        ? 'compliant'
+        : failures.length === 1
+          ? 'minor_issues'
+          : 'non_compliant';
+    await this.mergeAttributes(asset.id, { complianceStatus });
+    if (complianceStatus !== 'non_compliant') return {};
+    return this.followUpWorkOrder(asset, inspectionId, 'accessibility', {
+      kind: 'corrective',
+      priority: 'high',
+      title: `Accessibility remediation: ${asset.code}`,
+      description: `Audit failures: ${failures.join(', ')}.`,
+    });
+  }
+}
+
+interface HookAsset {
+  id: string;
+  code: string;
+  name: string;
+  attributes: Record<string, unknown>;
 }

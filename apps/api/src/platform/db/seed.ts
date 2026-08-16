@@ -249,6 +249,103 @@ const DEMO_ASSETS: SeedAsset[] = [
     },
   },
 
+  // Trees: mixed inventory; TRE-003 is the known high-risk specimen.
+  {
+    typeId: 'tree',
+    code: 'TRE-001',
+    name: 'Rain tree, Merdeka Square',
+    geometry: { type: 'Point', coordinates: [101.6929, 3.1481] },
+    attributes: { species: 'Samanea saman', heightM: 18, dbhCm: 90, riskRating: 'low' },
+  },
+  {
+    typeId: 'tree',
+    code: 'TRE-002',
+    name: 'Angsana, Jalan Raja',
+    geometry: { type: 'Point', coordinates: [101.6937, 3.1487] },
+    attributes: { species: 'Pterocarpus indicus', heightM: 15, dbhCm: 70, riskRating: 'low' },
+  },
+  {
+    typeId: 'tree',
+    code: 'TRE-003',
+    name: 'Old angsana over walkway',
+    geometry: { type: 'Point', coordinates: [101.6944, 3.1471] },
+    attributes: { species: 'Pterocarpus indicus', heightM: 20, dbhCm: 110, riskRating: 'high' },
+  },
+  {
+    typeId: 'tree',
+    code: 'TRE-004',
+    name: 'Yellow flame, riverfront',
+    geometry: { type: 'Point', coordinates: [101.6955, 3.1466] },
+    attributes: {
+      species: 'Peltophorum pterocarpum',
+      heightM: 12,
+      dbhCm: 45,
+      riskRating: 'medium',
+    },
+  },
+
+  // Public toilets.
+  {
+    typeId: 'toilet_facility',
+    code: 'TOI-001',
+    name: 'Central Market public toilet',
+    geometry: { type: 'Point', coordinates: [101.6955, 3.1457] },
+    attributes: {
+      maleFixtures: 4,
+      femaleFixtures: 5,
+      accessibleFixtures: 1,
+      openingHours: '06:00-22:00',
+      operator: 'City maintenance',
+    },
+  },
+  {
+    typeId: 'toilet_facility',
+    code: 'TOI-002',
+    name: 'Merdeka Square public toilet',
+    geometry: { type: 'Point', coordinates: [101.6934, 3.1475] },
+    attributes: {
+      maleFixtures: 3,
+      femaleFixtures: 3,
+      accessibleFixtures: 0,
+      openingHours: '24h',
+      operator: 'Contractor A',
+    },
+  },
+
+  // Accessibility features around the Masjid Jamek interchange.
+  {
+    typeId: 'accessible_feature',
+    code: 'ACC-001',
+    name: 'Ramp, Masjid Jamek station east entrance',
+    geometry: { type: 'Point', coordinates: [101.6963, 3.1493] },
+    attributes: { featureKind: 'ramp', complianceStatus: 'compliant', slopePct: 5, widthCm: 120 },
+  },
+  {
+    typeId: 'accessible_feature',
+    code: 'ACC-002',
+    name: 'Tactile path, Lebuh Ampang',
+    geometry: { type: 'Point', coordinates: [101.6972, 3.1481] },
+    attributes: { featureKind: 'tactile_path', complianceStatus: 'unknown' },
+  },
+  {
+    typeId: 'accessible_feature',
+    code: 'ACC-003',
+    name: 'Accessible parking, Central Market',
+    geometry: { type: 'Point', coordinates: [101.6951, 3.1461] },
+    attributes: { featureKind: 'accessible_parking', complianceStatus: 'unknown' },
+  },
+  {
+    typeId: 'accessible_feature',
+    code: 'ACC-004',
+    name: 'Accessible toilet, Central Market',
+    geometry: { type: 'Point', coordinates: [101.6956, 3.1458] },
+    attributes: {
+      featureKind: 'accessible_toilet',
+      complianceStatus: 'compliant',
+      linkedFacilityCode: 'TOI-001',
+    },
+  },
+
   // Slope monitoring: a high-risk cut slope above the city.
   {
     typeId: 'slope',
@@ -438,6 +535,33 @@ const SEED_SCHEDULES = [
     assetTypeId: 'slope',
     templateKey: 'slopes.geotech_visual',
     intervalDays: 180,
+    priority: 'medium',
+  },
+  {
+    module: 'toilets',
+    key: 'toilets.daily_cleaning',
+    name: 'Daily cleaning round',
+    assetTypeId: 'toilet_facility',
+    templateKey: 'toilets.cleaning_round',
+    intervalDays: 1,
+    priority: 'medium',
+  },
+  {
+    module: 'trees',
+    key: 'trees.risk_inspection',
+    name: 'Tree risk inspection',
+    assetTypeId: 'tree',
+    templateKey: 'trees.risk_assessment',
+    intervalDays: 365,
+    priority: 'medium',
+  },
+  {
+    module: 'accessibility',
+    key: 'accessibility.audit_cycle',
+    name: 'Accessibility compliance audit',
+    assetTypeId: 'accessible_feature',
+    templateKey: 'accessibility.audit',
+    intervalDays: 365,
     priority: 'medium',
   },
 ];

@@ -14,3 +14,6 @@ import './modules/slopes';
 import './modules/lighting';
 import './modules/bins';
 import './modules/traffic';
+import './modules/trees';
+import './modules/toilets';
+import './modules/accessibility';
