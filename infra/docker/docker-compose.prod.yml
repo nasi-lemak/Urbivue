@@ -1,0 +1,57 @@
+# Production single-box deployment. Build from the repo root:
+#   docker compose -f infra/docker/docker-compose.prod.yml up -d --build
+# See docs/DEPLOYMENT.md for the full runbook.
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: urbivue
+      POSTGRES_USER: urbivue
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - dbdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U urbivue -d urbivue']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - '1883:1883' # devices connect here; firewall/authenticate in production
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://urbivue:${POSTGRES_PASSWORD:?}@db:5432/urbivue
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      INGEST_API_KEY: ${INGEST_API_KEY:?set INGEST_API_KEY}
+      MQTT_URL: mqtt://mqtt:1883
+      NODE_ENV: production
+      # Optional: ALERT_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+      # LIGHTING_ON_START, LIGHTING_ON_END, PUBLIC_RATE_LIMIT_PER_MINUTE,
+      # SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '80:80' # terminate TLS in front of this (reverse proxy / load balancer)
+
+volumes:
+  dbdata:

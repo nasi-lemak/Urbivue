@@ -8,10 +8,12 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
 import { DbService } from '../../platform/db/db.service';
 import { Public } from '../../platform/auth/decorators';
+import { PublicRateLimitGuard } from '../../platform/auth/rate-limit.guard';
 import { zodParse } from '../../platform/zod';
 
 const ratingSchema = z.object({
@@ -68,6 +70,7 @@ class PublicToiletsController {
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Post(':id/rating')
   rate(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown) {
     const { stars, comment } = zodParse(ratingSchema, body);
@@ -77,6 +80,6 @@ class PublicToiletsController {
 
 @Module({
   controllers: [PublicToiletsController],
-  providers: [ToiletsService],
+  providers: [ToiletsService, PublicRateLimitGuard],
 })
 export class ToiletsModule {}

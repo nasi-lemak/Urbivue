@@ -1,8 +1,19 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { REPORT_STATUSES, createReportSchema, listReportCategories } from '@urbivue/shared';
 import { z } from 'zod';
 import { ReportsService } from './reports.service';
 import { Public, RequirePermission } from '../auth/decorators';
+import { PublicRateLimitGuard } from '../auth/rate-limit.guard';
 import type { AuthUser } from '../auth/auth.service';
 import { zodParse } from '../zod';
 
@@ -18,6 +29,7 @@ export class PublicReportsController {
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Post('reports')
   create(@Body() body: unknown) {
     return this.reports.create(zodParse(createReportSchema, body));

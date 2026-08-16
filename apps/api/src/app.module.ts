@@ -12,6 +12,7 @@ import { TelemetryModule } from './platform/telemetry/telemetry.module';
 import { WorkflowModule } from './platform/workflow/workflow.module';
 import { ReportsModule } from './platform/reports/reports.module';
 import { EventsModule } from './platform/events/events.module';
+import { AnalyticsModule } from './platform/analytics/analytics.module';
 import { PumpsModule } from './modules/pumps/pumps.module';
 import { SlopesModule } from './modules/slopes/slopes.module';
 import { LightingModule } from './modules/lighting/lighting.module';
@@ -34,6 +35,7 @@ import { HealthController } from './platform/health.controller';
     TelemetryModule,
     WorkflowModule,
     ReportsModule,
+    AnalyticsModule,
     PumpsModule,
     SlopesModule,
     LightingModule,

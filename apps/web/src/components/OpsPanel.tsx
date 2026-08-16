@@ -33,6 +33,28 @@ interface CitizenReport {
   createdAt: string;
 }
 
+interface Overview {
+  modules: { module: string; assets: number; needsAttention: number; poorCondition: number }[];
+  incidents: {
+    open: number;
+    openCritical: number;
+    opened30d: number;
+    avgResolveHours30d: string | null;
+  };
+  workOrders: {
+    active: number;
+    activeHighPriority: number;
+    created30d: number;
+    avgCompleteHours: string | null;
+  };
+  citizenReports: {
+    open: number;
+    untriaged: number;
+    received30d: number;
+    avgResolveHours: string | null;
+  };
+}
+
 const SEVERITY_COLORS: Record<Incident['severity'], string> = {
   info: '#3b82f6',
   warning: '#f59e0b',
@@ -48,11 +70,12 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 /** Bottom operations panel: live incidents and active work orders. */
 export function OpsPanel() {
-  const [tab, setTab] = useState<'incidents' | 'workOrders' | 'reports'>('incidents');
+  const [tab, setTab] = useState<'incidents' | 'workOrders' | 'reports' | 'overview'>('incidents');
   const [collapsed, setCollapsed] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [reports, setReports] = useState<CitizenReport[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
 
   const refresh = useCallback(() => {
     api<Incident[]>('/incidents?status=unresolved')
@@ -63,6 +86,9 @@ export function OpsPanel() {
       .catch(() => undefined);
     api<CitizenReport[]>('/reports?status=active')
       .then(setReports)
+      .catch(() => undefined);
+    api<Overview>('/analytics/overview')
+      .then(setOverview)
       .catch(() => undefined);
   }, []);
 
@@ -113,6 +139,9 @@ export function OpsPanel() {
           </button>
           <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>
             Reports <strong>{reports.length}</strong>
+          </button>
+          <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>
+            Overview
           </button>
         </div>
         <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)}>
@@ -205,6 +234,49 @@ export function OpsPanel() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!collapsed && tab === 'overview' && (
+        <div className="incidents-list">
+          {!overview && <p className="muted">Loading…</p>}
+          {overview && (
+            <>
+              <div className="overview-stats">
+                <div>
+                  <strong>{overview.incidents.open}</strong> incidents open
+                  {overview.incidents.openCritical > 0 &&
+                    ` (${overview.incidents.openCritical} critical)`}
+                  {overview.incidents.avgResolveHours30d != null &&
+                    ` · avg resolve ${overview.incidents.avgResolveHours30d} h`}
+                </div>
+                <div>
+                  <strong>{overview.workOrders.active}</strong> work orders active
+                  {overview.workOrders.activeHighPriority > 0 &&
+                    ` (${overview.workOrders.activeHighPriority} high/urgent)`}
+                  {overview.workOrders.avgCompleteHours != null &&
+                    ` · avg completion ${overview.workOrders.avgCompleteHours} h`}
+                </div>
+                <div>
+                  <strong>{overview.citizenReports.open}</strong> citizen reports open
+                  {overview.citizenReports.untriaged > 0 &&
+                    ` (${overview.citizenReports.untriaged} untriaged)`}
+                </div>
+              </div>
+              {overview.modules.map((m) => (
+                <div key={m.module} className="incident-row">
+                  <div className="incident-main">
+                    <div className="incident-title">{m.module}</div>
+                    <div className="muted">
+                      {m.assets} assets
+                      {m.needsAttention > 0 && ` · ${m.needsAttention} need attention`}
+                      {m.poorCondition > 0 && ` · ${m.poorCondition} in poor condition`}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
