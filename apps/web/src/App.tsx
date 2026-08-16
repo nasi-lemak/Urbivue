@@ -5,6 +5,7 @@ import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { MapView } from './components/MapView';
 import { AssetDrawer } from './components/AssetDrawer';
+import { IncidentsPanel } from './components/IncidentsPanel';
 import type { AssetFeature, AssetTypeInfo, FeatureCollection } from './types';
 
 export function App() {
@@ -57,6 +58,7 @@ function Workspace() {
         onToggle={(id) => setEnabled((prev) => ({ ...prev, [id]: !prev[id] }))}
       />
       <MapView types={types} data={data} enabled={enabled} onSelect={handleSelect} />
+      <IncidentsPanel />
       {selected && (
         <AssetDrawer
           asset={selected}

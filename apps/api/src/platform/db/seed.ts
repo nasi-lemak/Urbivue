@@ -1,5 +1,6 @@
 /* Development/bootstrap seed: admin user, asset types from the shared
- * registry, and a handful of demo assets (only when the table is empty). */
+ * registry, demo assets for the demo/drainage/flood modules, monitoring
+ * sensors, and default flood alert rules. Idempotent: safe to re-run. */
 import * as bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 import { listAssetTypes } from '@urbivue/shared';
@@ -18,7 +19,15 @@ export async function syncAssetTypes(pool: Pool): Promise<void> {
   }
 }
 
-const DEMO_ASSETS = [
+interface SeedAsset {
+  typeId: string;
+  code: string;
+  name: string;
+  geometry: Record<string, unknown>;
+  attributes: Record<string, unknown>;
+}
+
+const DEMO_ASSETS: SeedAsset[] = [
   {
     typeId: 'demo_poi',
     code: 'POI-0001',
@@ -58,6 +67,160 @@ const DEMO_ASSETS = [
     },
     attributes: { kind: 'park' },
   },
+
+  // Drainage network sample: inlet -> manhole -> river outfall.
+  {
+    typeId: 'drain_node',
+    code: 'DRN-N001',
+    name: 'Inlet, Jalan Tun Perak',
+    geometry: { type: 'Point', coordinates: [101.6965, 3.1495] },
+    attributes: { kind: 'inlet' },
+  },
+  {
+    typeId: 'drain_node',
+    code: 'DRN-N002',
+    name: 'Manhole, Lebuh Ampang',
+    geometry: { type: 'Point', coordinates: [101.6975, 3.1478] },
+    attributes: { kind: 'manhole', invertLevelM: 31.2 },
+  },
+  {
+    typeId: 'drain_node',
+    code: 'DRN-N003',
+    name: 'Outfall, Klang River',
+    geometry: { type: 'Point', coordinates: [101.6958, 3.1462] },
+    attributes: { kind: 'outfall' },
+  },
+  {
+    typeId: 'drain_line',
+    code: 'DRN-L001',
+    name: 'Tun Perak trunk drain (upper)',
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [101.6965, 3.1495],
+        [101.6975, 3.1478],
+      ],
+    },
+    attributes: {
+      shape: 'box_culvert',
+      widthM: 1.2,
+      depthM: 1.5,
+      material: 'concrete',
+      upstreamNodeCode: 'DRN-N001',
+      downstreamNodeCode: 'DRN-N002',
+      blockagePct: 20,
+    },
+  },
+  {
+    typeId: 'drain_line',
+    code: 'DRN-L002',
+    name: 'Tun Perak trunk drain (lower)',
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [101.6975, 3.1478],
+        [101.6958, 3.1462],
+      ],
+    },
+    attributes: {
+      shape: 'box_culvert',
+      widthM: 1.2,
+      depthM: 1.8,
+      material: 'concrete',
+      upstreamNodeCode: 'DRN-N002',
+      downstreamNodeCode: 'DRN-N003',
+      blockagePct: 65,
+    },
+  },
+
+  // Flood monitoring: risk zone + two river stations.
+  {
+    typeId: 'flood_zone',
+    code: 'FZ-001',
+    name: 'Masjid Jamek low-lying zone',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [101.694, 3.1485],
+          [101.698, 3.1485],
+          [101.698, 3.145],
+          [101.694, 3.145],
+          [101.694, 3.1485],
+        ],
+      ],
+    },
+    attributes: { riskClass: 'high', basis: 'historical' },
+  },
+  {
+    typeId: 'monitoring_station',
+    code: 'MS-001',
+    name: 'Klang River @ Masjid Jamek',
+    geometry: { type: 'Point', coordinates: [101.6957, 3.1489] },
+    attributes: { stationKind: 'combined', waterway: 'Klang River' },
+  },
+  {
+    typeId: 'monitoring_station',
+    code: 'MS-002',
+    name: 'Gombak River @ Dang Wangi',
+    geometry: { type: 'Point', coordinates: [101.698, 3.1535] },
+    attributes: { stationKind: 'water_level', waterway: 'Gombak River' },
+  },
+];
+
+/** Sensors attach to monitoring-station assets by code. */
+const SEED_SENSORS = [
+  { externalId: 'WL-001', kind: 'water_level', unit: 'm', assetCode: 'MS-001' },
+  { externalId: 'WL-002', kind: 'water_level', unit: 'm', assetCode: 'MS-002' },
+  { externalId: 'RG-001', kind: 'rainfall', unit: 'mm/h', assetCode: 'MS-001' },
+];
+
+const SEED_ALERT_RULES = [
+  {
+    module: 'flood',
+    key: 'flood.level_warning',
+    name: 'Water level warning',
+    kind: 'threshold',
+    sensorKind: 'water_level',
+    params: { operator: 'gt', value: 1.5, clear: 1.2 },
+    severity: 'warning',
+  },
+  {
+    module: 'flood',
+    key: 'flood.level_danger',
+    name: 'Water level DANGER',
+    kind: 'threshold',
+    sensorKind: 'water_level',
+    params: { operator: 'gt', value: 2.5, clear: 2.0 },
+    severity: 'critical',
+  },
+  {
+    module: 'flood',
+    key: 'flood.rain_intense',
+    name: 'Intense rainfall',
+    kind: 'threshold',
+    sensorKind: 'rainfall',
+    params: { operator: 'gt', value: 30, clear: 20 },
+    severity: 'warning',
+  },
+  {
+    module: 'flood',
+    key: 'flood.level_rapid_rise',
+    name: 'Rapid water level rise',
+    kind: 'rate_of_change',
+    sensorKind: 'water_level',
+    params: { delta: 1.0, windowMinutes: 30 },
+    severity: 'warning',
+  },
+  {
+    module: 'flood',
+    key: 'flood.sensor_silent',
+    name: 'Water level sensor silent',
+    kind: 'absence',
+    sensorKind: 'water_level',
+    params: { minutes: 10 },
+    severity: 'warning',
+  },
 ];
 
 async function seed() {
@@ -78,17 +241,40 @@ async function seed() {
   await syncAssetTypes(pool);
   console.log('Asset types synced from shared registry');
 
-  const assetCount = await pool.query('SELECT count(*)::int AS n FROM assets');
-  if (assetCount.rows[0].n === 0) {
-    for (const a of DEMO_ASSETS) {
-      await pool.query(
-        `INSERT INTO assets (type_id, code, name, geom, attributes)
-         VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), $5)`,
-        [a.typeId, a.code, a.name, JSON.stringify(a.geometry), JSON.stringify(a.attributes)],
-      );
-    }
-    console.log(`Seeded ${DEMO_ASSETS.length} demo assets`);
+  let newAssets = 0;
+  for (const a of DEMO_ASSETS) {
+    const result = await pool.query(
+      `INSERT INTO assets (type_id, code, name, geom, attributes)
+       VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), $5)
+       ON CONFLICT (code) DO NOTHING`,
+      [a.typeId, a.code, a.name, JSON.stringify(a.geometry), JSON.stringify(a.attributes)],
+    );
+    newAssets += result.rowCount ?? 0;
   }
+  console.log(`Assets: ${newAssets} inserted, ${DEMO_ASSETS.length - newAssets} already present`);
+
+  for (const s of SEED_SENSORS) {
+    await pool.query(
+      `INSERT INTO sensors (asset_id, kind, external_id, unit, geom)
+       SELECT a.id, $2, $3, $4, a.geom
+       FROM assets a WHERE a.code = $1
+       ON CONFLICT (external_id) DO NOTHING`,
+      [s.assetCode, s.kind, s.externalId, s.unit],
+    );
+  }
+  console.log(`Sensors ensured: ${SEED_SENSORS.map((s) => s.externalId).join(', ')}`);
+
+  for (const r of SEED_ALERT_RULES) {
+    await pool.query(
+      `INSERT INTO alert_rules (module, key, name, kind, sensor_kind, params, severity)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (key) DO UPDATE SET
+         name = EXCLUDED.name, kind = EXCLUDED.kind, sensor_kind = EXCLUDED.sensor_kind,
+         params = EXCLUDED.params, severity = EXCLUDED.severity`,
+      [r.module, r.key, r.name, r.kind, r.sensorKind, JSON.stringify(r.params), r.severity],
+    );
+  }
+  console.log(`Alert rules ensured: ${SEED_ALERT_RULES.map((r) => r.key).join(', ')}`);
 
   await pool.end();
 }

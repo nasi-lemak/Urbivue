@@ -8,8 +8,8 @@ core** with pluggable **domain modules**:
 
 | Module | Status | What it manages |
 |---|---|---|
-| Drain Management | 🟡 Phase 1 | Drainage network, blockages, cleaning & condition |
-| Flood Monitoring | 🟡 Phase 1 | Water-level/rain sensors, flood zones, real-time alerts |
+| Drain Management | 🟢 In progress | Drainage network, blockages, cleaning & condition |
+| Flood Monitoring | 🟢 In progress | Water-level/rain sensors, flood zones, real-time alerts |
 | Water Pumps | ⚪ Phase 2 | Pump stations, run telemetry, flood-response interlocks |
 | Slope Monitoring | ⚪ Phase 2 | Slopes/retaining walls, movement sensors, landslide risk |
 | Street Lighting | ⚪ Phase 3 | Poles & luminaires, outage detection, energy usage |
@@ -67,11 +67,33 @@ infra/docker    Docker Compose: PostGIS+Timescale, Redis, Mosquitto (MQTT)
 docs/           Architecture, data model, module specs, roadmap
 ```
 
+### Try the storm demo
+
+With the stack running (`db` + `mqtt` containers, API, web):
+
+```bash
+pnpm --filter @urbivue/simulator start storm 60    # rainfall + river levels ramp up
+```
+
+Watch the incidents panel: rainfall and water-level warnings fire first, then critical
+"DANGER" incidents as levels pass 2.5 m. Run `... start calm 20` afterwards and the
+threshold incidents auto-resolve as levels drop. `... start silence 60` exercises the
+silent-sensor (absence) rule. Devices without MQTT can POST to `/api/ingest` with the
+`X-Ingest-Key` header (see `.env.example`).
+
 ## Status
 
 **Phase 0 (platform foundation) is implemented**: monorepo scaffold with CI, PostGIS/Timescale
 database with migrations and seed, JWT auth with role-based permissions and audit logging, the
 geospatial asset registry (typed JSONB attributes, spatial queries, GeoJSON import with dry-run
 validation and export, soft decommissioning), and the map-first web shell with per-type layers
-and an asset detail editor. Next up per the roadmap: Phase 1 — telemetry pipeline, rules &
-alerting, and the Drain Management + Flood Monitoring modules.
+and an asset detail editor.
+
+**Phase 1 (telemetry, rules & the first two modules) is in progress.** Done so far: sensor
+registry and readings hypertable (TimescaleDB), MQTT + keyed HTTP ingestion, the rules engine
+(threshold with hysteresis, rate-of-change, sensor-silence absence rules) firing deduplicated
+incidents with acknowledge/resolve workflow and auto-resolution, default flood alert rules,
+drainage + flood asset types with seeded demo network, the sensor simulator (calm/storm/silence
+scenarios), and a live incidents panel in the web shell. Remaining for Phase 1: inspection
+templates & work orders, continuous aggregates for dashboards, drain cleaning-priority scoring,
+and richer notification channels.
