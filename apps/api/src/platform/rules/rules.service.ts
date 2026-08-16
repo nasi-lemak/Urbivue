@@ -203,6 +203,15 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
     return false;
   }
 
+  /** Auto-heal counterpart for module incidents (matched by exact title). */
+  async resolveModuleIncidentByTitle(title: string): Promise<void> {
+    await this.db.query(
+      `UPDATE incidents SET status = 'resolved', resolved_at = now()
+       WHERE title = $1 AND status <> 'resolved' AND rule_id IS NULL`,
+      [title],
+    );
+  }
+
   private async autoResolve(ruleId: string, sensorId: string): Promise<void> {
     await this.db.query(
       `UPDATE incidents SET status = 'resolved', resolved_at = now()

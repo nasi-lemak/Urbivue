@@ -14,6 +14,9 @@ import { ReportsModule } from './platform/reports/reports.module';
 import { EventsModule } from './platform/events/events.module';
 import { PumpsModule } from './modules/pumps/pumps.module';
 import { SlopesModule } from './modules/slopes/slopes.module';
+import { LightingModule } from './modules/lighting/lighting.module';
+import { BinsModule } from './modules/bins/bins.module';
+import { TrafficModule } from './modules/traffic/traffic.module';
 import { HealthController } from './platform/health.controller';
 
 @Module({
@@ -29,6 +32,9 @@ import { HealthController } from './platform/health.controller';
     ReportsModule,
     PumpsModule,
     SlopesModule,
+    LightingModule,
+    BinsModule,
+    TrafficModule,
   ],
   controllers: [HealthController],
   providers: [

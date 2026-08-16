@@ -11,3 +11,6 @@ import './modules/drainage';
 import './modules/flood';
 import './modules/pumps';
 import './modules/slopes';
+import './modules/lighting';
+import './modules/bins';
+import './modules/traffic';

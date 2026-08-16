@@ -194,6 +194,61 @@ const DEMO_ASSETS: SeedAsset[] = [
     parentCode: 'PS-001',
   },
 
+  // Street lighting: circuit C-01 (four smart poles) + two unmonitored poles.
+  ...[1, 2, 3, 4, 5, 6].map((n) => ({
+    typeId: 'light_pole',
+    code: `LP-00${n}`,
+    name: `Light pole ${n}, Jalan Raja`,
+    geometry: { type: 'Point', coordinates: [101.6925 + n * 0.0004, 3.1482 + n * 0.0002] },
+    attributes: {
+      poleHeightM: 9,
+      luminaireType: 'led',
+      wattage: 120,
+      circuitId: n <= 4 ? 'C-01' : 'C-02',
+      smartNode: n <= 4,
+    },
+  })),
+
+  // Waste bins: five street bins, three with fill sensors.
+  ...[1, 2, 3, 4, 5].map((n) => ({
+    typeId: 'waste_bin',
+    code: `BIN-00${n}`,
+    name: `Street bin ${n}`,
+    geometry: { type: 'Point', coordinates: [101.6935 + n * 0.0008, 3.1455 + (n % 2) * 0.0006] },
+    attributes: {
+      capacityL: 240,
+      stream: 'general',
+      binType: 'street',
+      routeId: 'R-01',
+    },
+  })),
+
+  // Traffic counters on the two main approaches.
+  {
+    typeId: 'traffic_counter',
+    code: 'TC-001',
+    name: 'Jalan Tun Perak eastbound',
+    geometry: { type: 'Point', coordinates: [101.6968, 3.1489] },
+    attributes: {
+      technology: 'radar',
+      lanesCovered: 2,
+      directions: 'EB',
+      roadName: 'Jalan Tun Perak',
+    },
+  },
+  {
+    typeId: 'traffic_counter',
+    code: 'TC-002',
+    name: 'Jalan Raja Laut southbound',
+    geometry: { type: 'Point', coordinates: [101.6942, 3.1521] },
+    attributes: {
+      technology: 'inductive_loop',
+      lanesCovered: 3,
+      directions: 'SB',
+      roadName: 'Jalan Raja Laut',
+    },
+  },
+
   // Slope monitoring: a high-risk cut slope above the city.
   {
     typeId: 'slope',
@@ -226,6 +281,15 @@ const SEED_SENSORS = [
   { externalId: 'SMP-001', kind: 'sump_level', unit: 'm', assetCode: 'PS-001' },
   { externalId: 'TLT-001', kind: 'tilt', unit: 'deg', assetCode: 'SLP-001' },
   { externalId: 'PZ-001', kind: 'piezometer', unit: 'kPa', assetCode: 'SLP-001' },
+  { externalId: 'LP-001-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-001' },
+  { externalId: 'LP-002-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-002' },
+  { externalId: 'LP-003-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-003' },
+  { externalId: 'LP-004-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-004' },
+  { externalId: 'BIN-001-FILL', kind: 'fill_level', unit: '%', assetCode: 'BIN-001' },
+  { externalId: 'BIN-002-FILL', kind: 'fill_level', unit: '%', assetCode: 'BIN-002' },
+  { externalId: 'BIN-003-FILL', kind: 'fill_level', unit: '%', assetCode: 'BIN-003' },
+  { externalId: 'TC-001-CNT', kind: 'vehicle_count', unit: 'veh', assetCode: 'TC-001' },
+  { externalId: 'TC-002-CNT', kind: 'vehicle_count', unit: 'veh', assetCode: 'TC-002' },
 ];
 
 const SEED_ALERT_RULES = [
@@ -318,6 +382,24 @@ const SEED_ALERT_RULES = [
     sensorKind: 'piezometer',
     params: { operator: 'gt', value: 50, clear: 40 },
     severity: 'warning',
+  },
+  {
+    module: 'bins',
+    key: 'bins.fill_high',
+    name: 'Bin nearly full',
+    kind: 'threshold',
+    sensorKind: 'fill_level',
+    params: { operator: 'gt', value: 90, clear: 60 },
+    severity: 'warning',
+  },
+  {
+    module: 'traffic',
+    key: 'traffic.counter_silent',
+    name: 'Traffic counter silent',
+    kind: 'absence',
+    sensorKind: 'vehicle_count',
+    params: { minutes: 120 },
+    severity: 'info',
   },
 ];
 

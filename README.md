@@ -12,9 +12,9 @@ core** with pluggable **domain modules**:
 | Flood Monitoring | 🟢 In progress | Water-level/rain sensors, flood zones, real-time alerts |
 | Water Pumps | 🟢 In progress | Pump stations, run telemetry, flood-response interlocks |
 | Slope Monitoring | 🟢 In progress | Slopes/retaining walls, movement sensors, landslide risk |
-| Street Lighting | ⚪ Phase 3 | Poles & luminaires, outage detection, energy usage |
-| Waste Bins | ⚪ Phase 3 | Bin inventory, fill levels, collection routing |
-| Traffic Counters | ⚪ Phase 3 | Count stations, traffic time-series & analytics |
+| Street Lighting | 🟢 In progress | Poles & luminaires, outage detection, energy usage |
+| Waste Bins | 🟢 In progress | Bin inventory, fill levels, collection routing |
+| Traffic Counters | 🟢 In progress | Count stations, traffic time-series & analytics |
 | Tree Management | ⚪ Phase 4 | Tree inventory, health & risk inspections, pruning |
 | Public Toilets | ⚪ Phase 4 | Facility registry, cleaning schedules, service quality |
 | Accessible Facilities | ⚪ Phase 4 | Ramps, tactile paving, accessible amenities & audits |
@@ -121,6 +121,17 @@ public intake at `POST /api/public/reports` with spatial de-duplication (50 m) a
 nearest-asset matching, anonymous status lookup, and a staff triage queue (third ops-panel tab)
 that can turn a report into a prioritized work order. Remaining for Phase 2: report photos,
 zone-scoped interlocks, and the public map/report form UI (Phase 4 portal).
+
+**Phase 3 is in progress** — the three device-fleet modules are live: Street Lighting (smart
+poles report power draw; a periodic sweep detects outages during on-hours and day-burners
+during off-hours, rolls three-plus dark poles on one circuit into a single circuit-fault
+incident, and self-heals when power returns; unmonitored poles fall back to night-patrol
+inspections and citizen reports), Waste Bins (fill-level rules plus
+`GET /api/bins/collection-list` — bins over threshold grouped by stream and ordered
+nearest-neighbor from the depot with leg distances), and Traffic Counters
+(`GET /api/traffic/stats/<counter>` hourly profiles and daily totals, plus a public open-data
+API: station list and JSON/CSV count exports). Remaining for Phase 3: map
+clustering/vector-tile performance for large fleets, and bulk-import ergonomics.
 
 Deferred niceties: Timescale continuous aggregates (swap in for the bucketed query when chart
 volume demands), email notifications, and offline-queueing for crew forms.

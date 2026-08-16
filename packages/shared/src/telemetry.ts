@@ -11,6 +11,7 @@ export const SENSOR_KINDS = [
   'flow',
   'run_status',
   'sump_level',
+  'power_draw',
   'vehicle_count',
   'occupancy',
 ] as const;
