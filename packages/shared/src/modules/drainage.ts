@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { registerAssetType } from '../asset-types';
 import { registerInspectionTemplate } from '../workflow';
+import { registerReportCategory } from '../reports';
 
 /** Drain Management module (Phase 1): drainage network as lines + nodes. */
 
@@ -66,4 +67,17 @@ registerInspectionTemplate({
     { key: 'coversIntact', label: 'Covers/grates intact', type: 'boolean', required: true },
     { key: 'observations', label: 'Observations', type: 'note' },
   ],
+});
+
+registerReportCategory({
+  key: 'blocked_drain',
+  module: 'drainage',
+  name: 'Blocked drain',
+  priority: 'high',
+});
+registerReportCategory({
+  key: 'damaged_drain_cover',
+  module: 'drainage',
+  name: 'Broken or missing drain cover',
+  priority: 'high',
 });

@@ -10,8 +10,8 @@ core** with pluggable **domain modules**:
 |---|---|---|
 | Drain Management | 🟢 In progress | Drainage network, blockages, cleaning & condition |
 | Flood Monitoring | 🟢 In progress | Water-level/rain sensors, flood zones, real-time alerts |
-| Water Pumps | ⚪ Phase 2 | Pump stations, run telemetry, flood-response interlocks |
-| Slope Monitoring | ⚪ Phase 2 | Slopes/retaining walls, movement sensors, landslide risk |
+| Water Pumps | 🟢 In progress | Pump stations, run telemetry, flood-response interlocks |
+| Slope Monitoring | 🟢 In progress | Slopes/retaining walls, movement sensors, landslide risk |
 | Street Lighting | ⚪ Phase 3 | Poles & luminaires, outage detection, energy usage |
 | Waste Bins | ⚪ Phase 3 | Bin inventory, fill levels, collection routing |
 | Traffic Counters | ⚪ Phase 3 | Count stations, traffic time-series & analytics |
@@ -111,6 +111,16 @@ periodic sweep handle it), sensor readings can be served bucketed by hour/day fo
 alerts fan out through pluggable channels — log always, plus webhook (`ALERT_WEBHOOK_URL`) and
 Telegram (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`) when configured.
 
-**Phase 1 is complete.** Next per the roadmap: Phase 2 — Water Pumps, Slope Monitoring, and
-citizen reports. Deferred niceties: Timescale continuous aggregates (swap in for the bucketed
-query when chart volume demands), email notifications, and offline-queueing for crew forms.
+**Phase 1 is complete. Phase 2 is in progress**: the Water Pumps module (station/pump
+hierarchy, run/current/sump telemetry, a readiness board at `GET /api/pumps/readiness`, and a
+flood interlock that opens a critical incident when no pump is running during a water-level
+alert), the Slope Monitoring module (tilt threshold + rate-of-change and piezometer rules, plus
+a rain-correlation watch that flags high-risk slopes during intense rainfall), an in-process
+platform event bus powering those cross-module reactions, and the citizen reports service —
+public intake at `POST /api/public/reports` with spatial de-duplication (50 m) and
+nearest-asset matching, anonymous status lookup, and a staff triage queue (third ops-panel tab)
+that can turn a report into a prioritized work order. Remaining for Phase 2: report photos,
+zone-scoped interlocks, and the public map/report form UI (Phase 4 portal).
+
+Deferred niceties: Timescale continuous aggregates (swap in for the bucketed query when chart
+volume demands), email notifications, and offline-queueing for crew forms.

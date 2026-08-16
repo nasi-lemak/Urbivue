@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { RateOfChangeParams, Severity, ThresholdParams } from '@urbivue/shared';
 import { DbService } from '../db/db.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PlatformEventsService } from '../events/events.service';
 import { evaluateRateOfChange, evaluateThreshold } from './rules.logic';
 
 export interface SensorRow {
@@ -35,6 +36,7 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly db: DbService,
     private readonly notifications: NotificationsService,
+    private readonly events: PlatformEventsService,
   ) {}
 
   onModuleInit() {
@@ -162,7 +164,43 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
     );
     if (inserted.rowCount) {
       this.notifications.notify(rule.severity, title, { ruleKey: rule.key, module: rule.module });
+      this.events.emitIncidentOpened({
+        module: rule.module,
+        ruleKey: rule.key,
+        severity: rule.severity,
+        title,
+        sensorId: sensor.id,
+        assetId: sensor.asset_id,
+      });
     }
+  }
+
+  /**
+   * Incident opened by module logic rather than a sensor rule (e.g. pump
+   * station idle during a flood alert). De-duplicated by title while
+   * unresolved. Does not re-emit incident.opened, so module handlers
+   * reacting to rule incidents cannot loop.
+   */
+  async openModuleIncident(opts: {
+    severity: Severity;
+    title: string;
+    assetId?: string | null;
+    detail?: Record<string, unknown>;
+  }): Promise<boolean> {
+    const inserted = await this.db.query(
+      `INSERT INTO incidents (severity, title, asset_id, detail)
+       SELECT $1, $2, $3, $4
+       WHERE NOT EXISTS (
+         SELECT 1 FROM incidents WHERE title = $2 AND status <> 'resolved'
+       )
+       RETURNING id`,
+      [opts.severity, opts.title, opts.assetId ?? null, JSON.stringify(opts.detail ?? {})],
+    );
+    if (inserted.rowCount) {
+      this.notifications.notify(opts.severity, opts.title, opts.detail ?? {});
+      return true;
+    }
+    return false;
   }
 
   private async autoResolve(ruleId: string, sensorId: string): Promise<void> {

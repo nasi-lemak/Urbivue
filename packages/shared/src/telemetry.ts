@@ -9,6 +9,8 @@ export const SENSOR_KINDS = [
   'piezometer',
   'current',
   'flow',
+  'run_status',
+  'sump_level',
   'vehicle_count',
   'occupancy',
 ] as const;

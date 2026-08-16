@@ -25,6 +25,8 @@ interface SeedAsset {
   name: string;
   geometry: Record<string, unknown>;
   attributes: Record<string, unknown>;
+  /** Linked in a second pass, after all assets exist. */
+  parentCode?: string;
 }
 
 const DEMO_ASSETS: SeedAsset[] = [
@@ -166,13 +168,64 @@ const DEMO_ASSETS: SeedAsset[] = [
     geometry: { type: 'Point', coordinates: [101.698, 3.1535] },
     attributes: { stationKind: 'water_level', waterway: 'Gombak River' },
   },
+
+  // Water pumps: one station with two pumps at the river confluence.
+  {
+    typeId: 'pump_station',
+    code: 'PS-001',
+    name: 'Masjid Jamek flood pump station',
+    geometry: { type: 'Point', coordinates: [101.6949, 3.1493] },
+    attributes: { sumpCapacityM3: 120, powerFeed: 'grid_plus_generator', autoStartLevelM: 1.2 },
+  },
+  {
+    typeId: 'pump',
+    code: 'PMP-001',
+    name: 'Pump 1 (duty)',
+    geometry: { type: 'Point', coordinates: [101.69488, 3.14928] },
+    attributes: { ratedFlowLps: 500, headM: 8, powerKw: 55, driveType: 'electric' },
+    parentCode: 'PS-001',
+  },
+  {
+    typeId: 'pump',
+    code: 'PMP-002',
+    name: 'Pump 2 (standby)',
+    geometry: { type: 'Point', coordinates: [101.69492, 3.14932] },
+    attributes: { ratedFlowLps: 500, headM: 8, powerKw: 55, driveType: 'diesel' },
+    parentCode: 'PS-001',
+  },
+
+  // Slope monitoring: a high-risk cut slope above the city.
+  {
+    typeId: 'slope',
+    code: 'SLP-001',
+    name: 'Bukit Nanas cut slope',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [101.7005, 3.1515],
+          [101.7025, 3.1515],
+          [101.7025, 3.15],
+          [101.7005, 3.15],
+          [101.7005, 3.1515],
+        ],
+      ],
+    },
+    attributes: { heightM: 22, angleDeg: 55, riskRanking: 'high', geology: 'weathered granite' },
+  },
 ];
 
-/** Sensors attach to monitoring-station assets by code. */
+/** Sensors attach to assets by code. */
 const SEED_SENSORS = [
   { externalId: 'WL-001', kind: 'water_level', unit: 'm', assetCode: 'MS-001' },
   { externalId: 'WL-002', kind: 'water_level', unit: 'm', assetCode: 'MS-002' },
   { externalId: 'RG-001', kind: 'rainfall', unit: 'mm/h', assetCode: 'MS-001' },
+  { externalId: 'PMP-001-RUN', kind: 'run_status', unit: '', assetCode: 'PMP-001' },
+  { externalId: 'PMP-002-RUN', kind: 'run_status', unit: '', assetCode: 'PMP-002' },
+  { externalId: 'PMP-001-AMP', kind: 'current', unit: 'A', assetCode: 'PMP-001' },
+  { externalId: 'SMP-001', kind: 'sump_level', unit: 'm', assetCode: 'PS-001' },
+  { externalId: 'TLT-001', kind: 'tilt', unit: 'deg', assetCode: 'SLP-001' },
+  { externalId: 'PZ-001', kind: 'piezometer', unit: 'kPa', assetCode: 'SLP-001' },
 ];
 
 const SEED_ALERT_RULES = [
@@ -221,6 +274,51 @@ const SEED_ALERT_RULES = [
     params: { minutes: 10 },
     severity: 'warning',
   },
+  {
+    module: 'pumps',
+    key: 'pumps.overcurrent',
+    name: 'Pump overcurrent',
+    kind: 'threshold',
+    sensorKind: 'current',
+    params: { operator: 'gt', value: 80, clear: 70 },
+    severity: 'warning',
+  },
+  {
+    module: 'pumps',
+    key: 'pumps.sump_high_high',
+    name: 'Sump level high-high',
+    kind: 'threshold',
+    sensorKind: 'sump_level',
+    params: { operator: 'gt', value: 2.0, clear: 1.6 },
+    severity: 'critical',
+  },
+  {
+    module: 'slopes',
+    key: 'slopes.tilt_alert',
+    name: 'Slope tilt threshold',
+    kind: 'threshold',
+    sensorKind: 'tilt',
+    params: { operator: 'gt', value: 2.0, clear: 1.5 },
+    severity: 'warning',
+  },
+  {
+    module: 'slopes',
+    key: 'slopes.tilt_rapid',
+    name: 'Rapid slope movement',
+    kind: 'rate_of_change',
+    sensorKind: 'tilt',
+    params: { delta: 0.5, windowMinutes: 1440 },
+    severity: 'critical',
+  },
+  {
+    module: 'slopes',
+    key: 'slopes.piezo_high',
+    name: 'High groundwater pressure',
+    kind: 'threshold',
+    sensorKind: 'piezometer',
+    params: { operator: 'gt', value: 50, clear: 40 },
+    severity: 'warning',
+  },
 ];
 
 const SEED_SCHEDULES = [
@@ -239,6 +337,24 @@ const SEED_SCHEDULES = [
     name: 'Monitoring station service',
     assetTypeId: 'monitoring_station',
     templateKey: 'flood.station_check',
+    intervalDays: 180,
+    priority: 'medium',
+  },
+  {
+    module: 'pumps',
+    key: 'pumps.station_check',
+    name: 'Pump station check & test run',
+    assetTypeId: 'pump_station',
+    templateKey: 'pumps.station_check',
+    intervalDays: 30,
+    priority: 'high',
+  },
+  {
+    module: 'slopes',
+    key: 'slopes.geotech_visual',
+    name: 'Slope visual inspection',
+    assetTypeId: 'slope',
+    templateKey: 'slopes.geotech_visual',
     intervalDays: 180,
     priority: 'medium',
   },
@@ -289,10 +405,18 @@ async function seed() {
   }
   console.log(`Assets: ${newAssets} inserted, ${DEMO_ASSETS.length - newAssets} already present`);
 
+  for (const a of DEMO_ASSETS.filter((x) => x.parentCode)) {
+    await pool.query(
+      `UPDATE assets SET parent_id = (SELECT id FROM assets WHERE code = $2)
+       WHERE code = $1 AND parent_id IS NULL`,
+      [a.code, a.parentCode],
+    );
+  }
+
   for (const s of SEED_SENSORS) {
     await pool.query(
       `INSERT INTO sensors (asset_id, kind, external_id, unit, geom)
-       SELECT a.id, $2, $3, $4, a.geom
+       SELECT a.id, $2, $3, $4, ST_PointOnSurface(a.geom)
        FROM assets a WHERE a.code = $1
        ON CONFLICT (external_id) DO NOTHING`,
       [s.assetCode, s.kind, s.externalId, s.unit],

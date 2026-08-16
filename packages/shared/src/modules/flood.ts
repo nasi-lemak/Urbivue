@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { registerAssetType } from '../asset-types';
 import { registerInspectionTemplate } from '../workflow';
+import { registerReportCategory } from '../reports';
 
 /** Flood Monitoring module (Phase 1): risk zones + monitoring stations. */
 
@@ -44,4 +45,11 @@ registerInspectionTemplate({
     { key: 'batteryPct', label: 'Battery level (%)', type: 'number', min: 0, max: 100 },
     { key: 'observations', label: 'Observations', type: 'note' },
   ],
+});
+
+registerReportCategory({
+  key: 'street_flooding',
+  module: 'flood',
+  name: 'Street flooding',
+  priority: 'urgent',
 });

@@ -22,6 +22,17 @@ interface WorkOrder {
   createdAt: string;
 }
 
+interface CitizenReport {
+  id: string;
+  category: string;
+  module: string;
+  description: string;
+  status: string;
+  matchedAssetCode: string | null;
+  duplicateCount: number;
+  createdAt: string;
+}
+
 const SEVERITY_COLORS: Record<Incident['severity'], string> = {
   info: '#3b82f6',
   warning: '#f59e0b',
@@ -37,10 +48,11 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 /** Bottom operations panel: live incidents and active work orders. */
 export function OpsPanel() {
-  const [tab, setTab] = useState<'incidents' | 'workOrders'>('incidents');
+  const [tab, setTab] = useState<'incidents' | 'workOrders' | 'reports'>('incidents');
   const [collapsed, setCollapsed] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [reports, setReports] = useState<CitizenReport[]>([]);
 
   const refresh = useCallback(() => {
     api<Incident[]>('/incidents?status=unresolved')
@@ -48,6 +60,9 @@ export function OpsPanel() {
       .catch(() => undefined);
     api<WorkOrder[]>('/work-orders?status=active')
       .then(setWorkOrders)
+      .catch(() => undefined);
+    api<CitizenReport[]>('/reports?status=active')
+      .then(setReports)
       .catch(() => undefined);
   }, []);
 
@@ -64,6 +79,16 @@ export function OpsPanel() {
 
   const woAct = async (id: string, action: 'assign' | 'start' | 'complete' | 'verify') => {
     await api(`/work-orders/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
+    refresh();
+  };
+
+  const reportTransition = async (id: string, status: string) => {
+    await api(`/reports/${id}/transition`, { method: 'POST', body: JSON.stringify({ status }) });
+    refresh();
+  };
+
+  const reportToWorkOrder = async (id: string) => {
+    await api(`/reports/${id}/create-work-order`, { method: 'POST', body: JSON.stringify({}) });
     refresh();
   };
 
@@ -85,6 +110,9 @@ export function OpsPanel() {
             onClick={() => setTab('workOrders')}
           >
             Work orders <strong>{workOrders.length}</strong>
+          </button>
+          <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>
+            Reports <strong>{reports.length}</strong>
           </button>
         </div>
         <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)}>
@@ -144,6 +172,36 @@ export function OpsPanel() {
                 {w.status === 'done' && (
                   <button onClick={() => woAct(w.id, 'verify')}>Verify</button>
                 )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!collapsed && tab === 'reports' && (
+        <div className="incidents-list">
+          {reports.length === 0 && <p className="muted">No open citizen reports</p>}
+          {reports.map((r) => (
+            <div key={r.id} className="incident-row">
+              <span className="dot" style={{ background: '#7c3aed' }} />
+              <div className="incident-main">
+                <div className="incident-title">
+                  {r.description}
+                  {r.duplicateCount > 0 && ` (+${r.duplicateCount} duplicates)`}
+                </div>
+                <div className="muted">
+                  {r.category.replace(/_/g, ' ')} · {r.status.replace(/_/g, ' ')}
+                  {r.matchedAssetCode ? ` · ${r.matchedAssetCode}` : ''}
+                </div>
+              </div>
+              <div className="incident-actions">
+                {r.status === 'new' && (
+                  <button onClick={() => reportTransition(r.id, 'triaged')}>Triage</button>
+                )}
+                {(r.status === 'new' || r.status === 'triaged') && (
+                  <button onClick={() => reportToWorkOrder(r.id)}>WO</button>
+                )}
+                <button onClick={() => reportTransition(r.id, 'resolved')}>Resolve</button>
               </div>
             </div>
           ))}
