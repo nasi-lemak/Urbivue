@@ -35,7 +35,43 @@ Planning and design documents live in [`docs/`](docs/):
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased implementation plan with milestones and
   acceptance criteria.
 
+## Getting started (development)
+
+Prerequisites: Node 22+, pnpm 10+, Docker.
+
+```bash
+pnpm install
+pnpm build                                  # build shared package + apps
+
+docker compose -f infra/docker/docker-compose.yml up -d db   # PostGIS + TimescaleDB
+pnpm db:migrate                             # apply SQL migrations
+pnpm db:seed                                # admin user + demo asset types/assets
+
+pnpm dev:api                                # NestJS API on :3000
+pnpm dev:web                                # Vite dev server on :5173 (proxies /api)
+```
+
+Sign in at http://localhost:5173 with `admin@urbivue.local` / `urbivue-admin`
+(override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`; see `.env.example`).
+
+Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check` — all run in CI,
+which also applies migrations + seed against a live PostGIS/Timescale service container.
+
+## Repository layout
+
+```
+apps/api        NestJS backend — platform services (auth/RBAC, asset registry, audit)
+apps/web        React + MapLibre ops dashboard shell
+packages/shared Zod schemas, asset-type registry, permission model (shared api <-> web)
+infra/docker    Docker Compose: PostGIS+Timescale, Redis, Mosquitto (MQTT)
+docs/           Architecture, data model, module specs, roadmap
+```
+
 ## Status
 
-The project is in the planning stage. The documents above define the target architecture and
-delivery order; Phase 0 (platform foundation) is the next implementation step.
+**Phase 0 (platform foundation) is implemented**: monorepo scaffold with CI, PostGIS/Timescale
+database with migrations and seed, JWT auth with role-based permissions and audit logging, the
+geospatial asset registry (typed JSONB attributes, spatial queries, GeoJSON import with dry-run
+validation and export, soft decommissioning), and the map-first web shell with per-type layers
+and an asset detail editor. Next up per the roadmap: Phase 1 — telemetry pipeline, rules &
+alerting, and the Drain Management + Flood Monitoring modules.
