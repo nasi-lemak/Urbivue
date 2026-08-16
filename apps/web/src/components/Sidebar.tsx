@@ -1,4 +1,7 @@
+import { useState } from 'react';
+import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { UsersPanel } from './UsersPanel';
 import type { AssetTypeInfo, FeatureCollection } from '../types';
 
 interface Props {
@@ -10,6 +13,23 @@ interface Props {
 
 export function Sidebar({ types, data, enabled, onToggle }: Props) {
   const { user, logout } = useAuth();
+  const [showUsers, setShowUsers] = useState(false);
+
+  const changeOwnPassword = async () => {
+    const current = window.prompt('Current password:');
+    if (!current) return;
+    const next = window.prompt('New password (min 8 chars):');
+    if (!next) return;
+    try {
+      await api('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      });
+      window.alert('Password changed.');
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Change failed');
+    }
+  };
 
   const byModule = new Map<string, AssetTypeInfo[]>();
   for (const t of types) {
@@ -46,8 +66,15 @@ export function Sidebar({ types, data, enabled, onToggle }: Props) {
           <div>{user?.displayName}</div>
           <div className="muted">{user?.role}</div>
         </div>
-        <button onClick={logout}>Sign out</button>
+        <div className="sidebar-footer-actions">
+          {user?.role === 'admin' && <button onClick={() => setShowUsers(true)}>Users</button>}
+          <button onClick={changeOwnPassword} title="Change password">
+            PW
+          </button>
+          <button onClick={logout}>Sign out</button>
+        </div>
       </div>
+      {showUsers && <UsersPanel onClose={() => setShowUsers(false)} />}
     </aside>
   );
 }

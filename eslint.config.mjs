@@ -11,4 +11,18 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    // Node scripts (smoke test etc.): Node 22 globals are available.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        Buffer: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+      },
+    },
+  },
 );

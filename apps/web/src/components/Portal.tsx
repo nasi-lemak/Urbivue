@@ -359,6 +359,24 @@ export function Portal() {
                   : 'Thanks — your report is in.'}
                 <br />
                 Tracking ID: <code>{submitResult.id}</code>
+                <label style={{ marginTop: '0.5rem' }}>
+                  Add a photo (optional)
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const form = new FormData();
+                      form.append('file', file);
+                      const res = await fetch(`/api/public/reports/${submitResult.id}/photo`, {
+                        method: 'POST',
+                        body: form,
+                      });
+                      window.alert(res.ok ? 'Photo attached — thank you.' : 'Photo upload failed.');
+                    }}
+                  />
+                </label>
                 <button style={{ marginTop: '0.5rem' }} onClick={() => setSubmitResult(null)}>
                   Report another
                 </button>

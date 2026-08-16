@@ -13,6 +13,8 @@ import { WorkflowModule } from './platform/workflow/workflow.module';
 import { ReportsModule } from './platform/reports/reports.module';
 import { EventsModule } from './platform/events/events.module';
 import { AnalyticsModule } from './platform/analytics/analytics.module';
+import { UsersModule } from './platform/users/users.module';
+import { AttachmentsModule } from './platform/attachments/attachments.module';
 import { PumpsModule } from './modules/pumps/pumps.module';
 import { SlopesModule } from './modules/slopes/slopes.module';
 import { LightingModule } from './modules/lighting/lighting.module';
@@ -36,6 +38,8 @@ import { HealthController } from './platform/health.controller';
     WorkflowModule,
     ReportsModule,
     AnalyticsModule,
+    UsersModule,
+    AttachmentsModule,
     PumpsModule,
     SlopesModule,
     LightingModule,
