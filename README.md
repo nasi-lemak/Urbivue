@@ -94,6 +94,15 @@ registry and readings hypertable (TimescaleDB), MQTT + keyed HTTP ingestion, the
 (threshold with hysteresis, rate-of-change, sensor-silence absence rules) firing deduplicated
 incidents with acknowledge/resolve workflow and auto-resolution, default flood alert rules,
 drainage + flood asset types with seeded demo network, the sensor simulator (calm/storm/silence
-scenarios), and a live incidents panel in the web shell. Remaining for Phase 1: inspection
-templates & work orders, continuous aggregates for dashboards, drain cleaning-priority scoring,
-and richer notification channels.
+scenarios), and a live ops panel (incidents + work orders) in the web shell.
+
+Inspections & work orders are in: per-asset-type checklist templates defined by modules
+(drain condition check, station check), validated submissions that update asset condition and
+map attributes, and the full work-order lifecycle (open → assigned → in progress → done →
+verified, with rework and cancellation) with per-transition timestamps. The flagship drainage
+flow works end to end: an inspection reporting ≥70 % blockage auto-opens a prioritized cleaning
+work order (deduplicated against existing active ones) that a crew can take, start, complete,
+and a supervisor verify — from the asset drawer's "New inspection" form to the ops panel.
+
+Remaining for Phase 1: recurring schedules, continuous aggregates for dashboard charts, and
+richer notification channels (email/Telegram).

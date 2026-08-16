@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { registerAssetType } from '../asset-types';
+import { registerInspectionTemplate } from '../workflow';
 
 /** Drain Management module (Phase 1): drainage network as lines + nodes. */
 
@@ -36,4 +37,33 @@ registerAssetType({
     })
     .strict(),
   style: { color: '#0e7490', icon: 'circle' },
+});
+
+/**
+ * Drain condition inspection. Submitting one writes blockagePct back to the
+ * asset's attributes, and blockage >= 70% auto-opens a cleaning work order
+ * (see the drainage hook in the API's InspectionsService).
+ */
+registerInspectionTemplate({
+  key: 'drainage.condition',
+  assetTypeId: 'drain_line',
+  name: 'Drain condition check',
+  items: [
+    {
+      key: 'blockagePct',
+      label: 'Blockage / silt level (%)',
+      type: 'number',
+      required: true,
+      min: 0,
+      max: 100,
+    },
+    {
+      key: 'structuralScore',
+      label: 'Structural condition (1 failed - 5 excellent)',
+      type: 'score',
+      required: true,
+    },
+    { key: 'coversIntact', label: 'Covers/grates intact', type: 'boolean', required: true },
+    { key: 'observations', label: 'Observations', type: 'note' },
+  ],
 });

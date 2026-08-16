@@ -8,10 +8,11 @@ import { AuditInterceptor } from './platform/audit/audit.interceptor';
 import { AssetsModule } from './platform/assets/assets.module';
 import { RulesModule } from './platform/rules/rules.module';
 import { TelemetryModule } from './platform/telemetry/telemetry.module';
+import { WorkflowModule } from './platform/workflow/workflow.module';
 import { HealthController } from './platform/health.controller';
 
 @Module({
-  imports: [DbModule, AuthModule, AssetsModule, RulesModule, TelemetryModule],
+  imports: [DbModule, AuthModule, AssetsModule, RulesModule, TelemetryModule, WorkflowModule],
   controllers: [HealthController],
   providers: [
     // Order matters: authenticate first, then authorize.

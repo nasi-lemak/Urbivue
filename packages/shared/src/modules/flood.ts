@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { registerAssetType } from '../asset-types';
+import { registerInspectionTemplate } from '../workflow';
 
 /** Flood Monitoring module (Phase 1): risk zones + monitoring stations. */
 
@@ -31,4 +32,16 @@ registerAssetType({
     })
     .strict(),
   style: { color: '#7c3aed', icon: 'triangle' },
+});
+
+registerInspectionTemplate({
+  key: 'flood.station_check',
+  assetTypeId: 'monitoring_station',
+  name: 'Monitoring station check',
+  items: [
+    { key: 'sensorClean', label: 'Sensor free of debris', type: 'boolean', required: true },
+    { key: 'mountSecure', label: 'Mounting secure', type: 'boolean', required: true },
+    { key: 'batteryPct', label: 'Battery level (%)', type: 'number', min: 0, max: 100 },
+    { key: 'observations', label: 'Observations', type: 'note' },
+  ],
 });

@@ -301,3 +301,35 @@ label {
     width: auto;
   }
 }
+
+/* Ops panel tabs + inspection form */
+.ops-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+.ops-tabs button {
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.ops-tabs button.active {
+  background: #e5e7eb;
+}
+.collapse-btn {
+  border: none;
+  background: transparent;
+}
+.flash {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.inspection-form label {
+  margin-bottom: 0.65rem;
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ASSET_STATUSES } from '@urbivue/shared';
 import { api, ApiError } from '../lib/api';
+import { InspectionForm } from './InspectionForm';
 import type { AssetFeature } from '../types';
 
 interface Props {
@@ -16,6 +17,8 @@ export function AssetDrawer({ asset, onClose, onChanged }: Props) {
   const [attributesText, setAttributesText] = useState(JSON.stringify(p.attributes, null, 2));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const save = async () => {
     setBusy(true);
@@ -62,40 +65,63 @@ export function AssetDrawer({ asset, onClose, onChanged }: Props) {
         </div>
         <button onClick={onClose}>✕</button>
       </div>
-      <div className="drawer-body">
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label>
-          Status
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            {ASSET_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, ' ')}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Attributes (JSON)
-          <textarea
-            rows={8}
-            value={attributesText}
-            onChange={(e) => setAttributesText(e.target.value)}
+      {inspecting ? (
+        <div className="drawer-body">
+          <InspectionForm
+            asset={asset}
+            onClose={() => setInspecting(false)}
+            onSubmitted={(result) => {
+              setInspecting(false);
+              setFlash(
+                result.workOrderId
+                  ? 'Inspection saved — cleaning work order auto-created.'
+                  : 'Inspection saved.',
+              );
+            }}
           />
-        </label>
-        <p className="muted">Last updated {new Date(p.updatedAt).toLocaleString()}</p>
-        {error && <div className="error">{error}</div>}
-      </div>
-      <div className="drawer-footer">
-        <button className="danger" onClick={decommission} disabled={busy}>
-          Decommission
-        </button>
-        <button className="primary" onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
-      </div>
+        </div>
+      ) : (
+        <div className="drawer-body">
+          {flash && <div className="flash">{flash}</div>}
+          <button onClick={() => setInspecting(true)} style={{ marginBottom: '0.75rem' }}>
+            New inspection
+          </button>
+          <label>
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label>
+            Status
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              {ASSET_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Attributes (JSON)
+            <textarea
+              rows={8}
+              value={attributesText}
+              onChange={(e) => setAttributesText(e.target.value)}
+            />
+          </label>
+          <p className="muted">Last updated {new Date(p.updatedAt).toLocaleString()}</p>
+          {error && <div className="error">{error}</div>}
+        </div>
+      )}
+      {!inspecting && (
+        <div className="drawer-footer">
+          <button className="danger" onClick={decommission} disabled={busy}>
+            Decommission
+          </button>
+          <button className="primary" onClick={save} disabled={busy}>
+            {busy ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

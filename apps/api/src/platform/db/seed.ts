@@ -3,7 +3,7 @@
  * sensors, and default flood alert rules. Idempotent: safe to re-run. */
 import * as bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
-import { listAssetTypes } from '@urbivue/shared';
+import { listAssetTypes, listInspectionTemplates } from '@urbivue/shared';
 import { databaseUrl } from './db.service';
 
 export async function syncAssetTypes(pool: Pool): Promise<void> {
@@ -240,6 +240,21 @@ async function seed() {
 
   await syncAssetTypes(pool);
   console.log('Asset types synced from shared registry');
+
+  for (const t of listInspectionTemplates()) {
+    await pool.query(
+      `INSERT INTO inspection_templates (key, asset_type_id, name, items)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (key) DO UPDATE SET
+         asset_type_id = EXCLUDED.asset_type_id, name = EXCLUDED.name, items = EXCLUDED.items`,
+      [t.key, t.assetTypeId, t.name, JSON.stringify(t.items)],
+    );
+  }
+  console.log(
+    `Inspection templates ensured: ${listInspectionTemplates()
+      .map((t) => t.key)
+      .join(', ')}`,
+  );
 
   let newAssets = 0;
   for (const a of DEMO_ASSETS) {
