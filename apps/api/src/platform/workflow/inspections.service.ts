@@ -12,6 +12,7 @@ import {
   validateResponses,
 } from '@urbivue/shared';
 import { DbService } from '../db/db.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { WorkOrdersService } from './work-orders.service';
 
 /** Blockage at or above this auto-opens a cleaning work order (module spec). */
@@ -24,6 +25,7 @@ export class InspectionsService implements OnModuleInit {
   constructor(
     private readonly db: DbService,
     private readonly workOrders: WorkOrdersService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Mirror the code-defined template registry into the DB (FK integrity). */
@@ -158,7 +160,10 @@ export class InspectionsService implements OnModuleInit {
       },
       null,
     );
-    this.logger.warn(`Auto-created work order ${wo.code} for ${asset.code}`);
+    this.notifications.notify('warning', `Work order ${wo.code} auto-created: ${wo.title}`, {
+      module: 'drainage',
+      assetCode: asset.code,
+    });
     return { workOrderId: wo.id };
   }
 }

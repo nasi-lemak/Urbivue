@@ -104,5 +104,13 @@ flow works end to end: an inspection reporting ≥70 % blockage auto-opens a pri
 work order (deduplicated against existing active ones) that a crew can take, start, complete,
 and a supervisor verify — from the asset drawer's "New inspection" form to the ops panel.
 
-Remaining for Phase 1: recurring schedules, continuous aggregates for dashboard charts, and
-richer notification channels (email/Telegram).
+Recurring schedules and notifications round Phase 1 out: enabled schedules generate
+deduplicated preventive work orders per asset on their interval (seeded: 90-day drain
+inspections, 180-day station servicing — run manually via `POST /api/schedules/run` or let the
+periodic sweep handle it), sensor readings can be served bucketed by hour/day for charts, and
+alerts fan out through pluggable channels — log always, plus webhook (`ALERT_WEBHOOK_URL`) and
+Telegram (`TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`) when configured.
+
+**Phase 1 is complete.** Next per the roadmap: Phase 2 — Water Pumps, Slope Monitoring, and
+citizen reports. Deferred niceties: Timescale continuous aggregates (swap in for the bucketed
+query when chart volume demands), email notifications, and offline-queueing for crew forms.

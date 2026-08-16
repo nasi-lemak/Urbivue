@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { InspectionsService } from './inspections.service';
+import { SchedulesController } from './schedules.controller';
+import { SchedulesService } from './schedules.service';
 import { WorkOrdersService } from './work-orders.service';
 import {
   InspectionTemplatesController,
@@ -8,8 +10,13 @@ import {
 } from './workflow.controllers';
 
 @Module({
-  controllers: [InspectionTemplatesController, InspectionsController, WorkOrdersController],
-  providers: [InspectionsService, WorkOrdersService],
+  controllers: [
+    InspectionTemplatesController,
+    InspectionsController,
+    WorkOrdersController,
+    SchedulesController,
+  ],
+  providers: [InspectionsService, WorkOrdersService, SchedulesService],
   exports: [WorkOrdersService],
 })
 export class WorkflowModule {}

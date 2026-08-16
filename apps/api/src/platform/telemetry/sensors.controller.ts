@@ -32,9 +32,30 @@ export class SensorsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit?: string,
+    @Query('bucket') bucket?: string,
   ) {
     const max = Math.min(Number(limit ?? 500), 5000);
     if (Number.isNaN(max) || max < 1) throw new BadRequestException('Invalid limit');
+
+    if (bucket) {
+      // Portable aggregation (works without TimescaleDB); a continuous
+      // aggregate can replace this query shape when chart volume demands it.
+      if (!['hour', 'day'].includes(bucket)) {
+        throw new BadRequestException(`bucket must be 'hour' or 'day'`);
+      }
+      const result = await this.db.query(
+        `SELECT date_trunc($5, ts) AS ts,
+                avg(value) AS avg, min(value) AS min, max(value) AS max, count(*)::int AS count
+         FROM readings
+         WHERE sensor_id = $1
+           AND ($2::timestamptz IS NULL OR ts >= $2)
+           AND ($3::timestamptz IS NULL OR ts <= $3)
+         GROUP BY 1 ORDER BY 1 DESC LIMIT $4`,
+        [id, from ?? null, to ?? null, max, bucket],
+      );
+      return result.rows;
+    }
+
     const result = await this.db.query(
       `SELECT ts, value, quality FROM readings
        WHERE sensor_id = $1

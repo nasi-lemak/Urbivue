@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { DbModule } from './platform/db/db.module';
+import { NotificationsModule } from './platform/notifications/notifications.module';
 import { AuthModule } from './platform/auth/auth.module';
 import { AuthGuard } from './platform/auth/auth.guard';
 import { PermissionGuard } from './platform/auth/permission.guard';
@@ -12,7 +13,15 @@ import { WorkflowModule } from './platform/workflow/workflow.module';
 import { HealthController } from './platform/health.controller';
 
 @Module({
-  imports: [DbModule, AuthModule, AssetsModule, RulesModule, TelemetryModule, WorkflowModule],
+  imports: [
+    DbModule,
+    NotificationsModule,
+    AuthModule,
+    AssetsModule,
+    RulesModule,
+    TelemetryModule,
+    WorkflowModule,
+  ],
   controllers: [HealthController],
   providers: [
     // Order matters: authenticate first, then authorize.

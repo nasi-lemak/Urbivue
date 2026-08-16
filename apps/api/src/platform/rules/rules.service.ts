@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { RateOfChangeParams, Severity, ThresholdParams } from '@urbivue/shared';
 import { DbService } from '../db/db.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { evaluateRateOfChange, evaluateThreshold } from './rules.logic';
 
 export interface SensorRow {
@@ -31,7 +32,10 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
   private ruleCache: { at: number; rules: RuleRow[] } | null = null;
   private sweepTimer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly db: DbService) {}
+  constructor(
+    private readonly db: DbService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   onModuleInit() {
     this.sweepTimer = setInterval(() => {
@@ -157,7 +161,7 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
       ],
     );
     if (inserted.rowCount) {
-      this.notify(rule.severity, title);
+      this.notifications.notify(rule.severity, title, { ruleKey: rule.key, module: rule.module });
     }
   }
 
@@ -167,18 +171,5 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
        WHERE rule_id = $1 AND sensor_id = $2 AND status <> 'resolved'`,
       [ruleId, sensorId],
     );
-  }
-
-  /** Notification channels: log always; optional webhook (Phase 1 minimum). */
-  private notify(severity: Severity, title: string): void {
-    this.logger.warn(`[${severity.toUpperCase()}] ${title}`);
-    const webhook = process.env.ALERT_WEBHOOK_URL;
-    if (webhook) {
-      fetch(webhook, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: 'urbivue', severity, title }),
-      }).catch((err) => this.logger.warn(`Webhook notification failed: ${err}`));
-    }
   }
 }

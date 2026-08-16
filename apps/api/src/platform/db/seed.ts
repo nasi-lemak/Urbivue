@@ -223,6 +223,27 @@ const SEED_ALERT_RULES = [
   },
 ];
 
+const SEED_SCHEDULES = [
+  {
+    module: 'drainage',
+    key: 'drainage.routine_inspection',
+    name: 'Routine drain inspection',
+    assetTypeId: 'drain_line',
+    templateKey: 'drainage.condition',
+    intervalDays: 90,
+    priority: 'medium',
+  },
+  {
+    module: 'flood',
+    key: 'flood.station_service',
+    name: 'Monitoring station service',
+    assetTypeId: 'monitoring_station',
+    templateKey: 'flood.station_check',
+    intervalDays: 180,
+    priority: 'medium',
+  },
+];
+
 async function seed() {
   const pool = new Pool({ connectionString: databaseUrl() });
 
@@ -290,6 +311,19 @@ async function seed() {
     );
   }
   console.log(`Alert rules ensured: ${SEED_ALERT_RULES.map((r) => r.key).join(', ')}`);
+
+  for (const s of SEED_SCHEDULES) {
+    await pool.query(
+      `INSERT INTO schedules (module, key, name, asset_type_id, template_key, interval_days, priority)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (key) DO UPDATE SET
+         name = EXCLUDED.name, asset_type_id = EXCLUDED.asset_type_id,
+         template_key = EXCLUDED.template_key, interval_days = EXCLUDED.interval_days,
+         priority = EXCLUDED.priority`,
+      [s.module, s.key, s.name, s.assetTypeId, s.templateKey, s.intervalDays, s.priority],
+    );
+  }
+  console.log(`Schedules ensured: ${SEED_SCHEDULES.map((s) => s.key).join(', ')}`);
 
   await pool.end();
 }
