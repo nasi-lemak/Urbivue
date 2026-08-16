@@ -1,10 +1,86 @@
-import { BadRequestException, Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { SENSOR_KINDS } from '@urbivue/shared';
+import { z } from 'zod';
 import { DbService } from '../db/db.service';
 import { RequirePermission } from '../auth/decorators';
+import { zodParse } from '../zod';
+
+/** Device provisioning payload (see docs/HARDWARE.md for the workflow). */
+const createSensorSchema = z.object({
+  externalId: z.string().min(1).max(64),
+  kind: z.enum(SENSOR_KINDS),
+  unit: z.string().max(16),
+  /** Attach to an asset by its code; sensor inherits the asset's location. */
+  assetCode: z.string().optional(),
+  /** Standalone sensors (e.g. a lone rain gauge) give coordinates instead. */
+  location: z
+    .object({ lon: z.number().min(-180).max(180), lat: z.number().min(-90).max(90) })
+    .optional(),
+  config: z.record(z.unknown()).optional(),
+});
 
 @Controller('sensors')
 export class SensorsController {
   constructor(private readonly db: DbService) {}
+
+  @RequirePermission('platform', 'manage')
+  @Post()
+  async register(@Body() body: unknown) {
+    const input = zodParse(createSensorSchema, body);
+
+    let assetId: string | null = null;
+    if (input.assetCode) {
+      const asset = await this.db.query<{ id: string }>('SELECT id FROM assets WHERE code = $1', [
+        input.assetCode,
+      ]);
+      if (!asset.rows[0]) throw new BadRequestException(`Unknown asset code '${input.assetCode}'`);
+      assetId = asset.rows[0].id;
+    } else if (!input.location) {
+      throw new BadRequestException('Provide assetCode or location');
+    }
+
+    try {
+      const result = await this.db.query<{ id: string }>(
+        `INSERT INTO sensors (asset_id, kind, external_id, unit, geom, config)
+         VALUES ($1, $2, $3, $4,
+                 COALESCE(
+                   ST_SetSRID(ST_MakePoint($5, $6), 4326),
+                   (SELECT ST_PointOnSurface(geom) FROM assets WHERE id = $1)
+                 ),
+                 $7)
+         RETURNING id`,
+        [
+          assetId,
+          input.kind,
+          input.externalId,
+          input.unit,
+          input.location?.lon ?? null,
+          input.location?.lat ?? null,
+          JSON.stringify(input.config ?? {}),
+        ],
+      );
+      return {
+        id: result.rows[0].id,
+        externalId: input.externalId,
+        mqttTopic: `urbivue/ingest/${input.externalId}`,
+      };
+    } catch (err) {
+      if ((err as { code?: string }).code === '23505') {
+        throw new ConflictException(`Sensor '${input.externalId}' already exists`);
+      }
+      throw err;
+    }
+  }
 
   @RequirePermission('platform', 'read')
   @Get()

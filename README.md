@@ -34,6 +34,10 @@ Planning and design documents live in [`docs/`](docs/):
 - [`docs/MODULES.md`](docs/MODULES.md) — functional specification for each of the ten modules.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased implementation plan with milestones and
   acceptance criteria.
+- [`docs/HARDWARE.md`](docs/HARDWARE.md) — sensor device designs, bills of materials,
+  installation & calibration, and the device provisioning workflow.
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — production deployment runbook.
+- [`firmware/`](firmware/) — ESP32 reference firmware for all seven prototype devices.
 
 ## Getting started (development)
 
@@ -62,6 +66,7 @@ which also applies migrations + seed against a live PostGIS/Timescale service co
 ```
 apps/api        NestJS backend — platform services (auth/RBAC, asset registry, audit)
 apps/web        React + MapLibre ops dashboard shell
+firmware/       ESP32 reference firmware for prototype sensor devices
 packages/shared Zod schemas, asset-type registry, permission model (shared api <-> web)
 infra/docker    Docker Compose: PostGIS+Timescale, Redis, Mosquitto (MQTT)
 docs/           Architecture, data model, module specs, roadmap
