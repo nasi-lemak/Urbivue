@@ -52,7 +52,11 @@ fn water_reading(step: usize, seed: &mut u32) -> Option<f32> {
 
 fn pump_current_reading(step: usize, seed: &mut u32) -> Option<f32> {
     // Idle for the first few readings, then running at ~52 A.
-    let amplitude_mv = if step < 3 { 4.0 } else { 52.0 / 30.0 * 1000.0 * 1.414 };
+    let amplitude_mv = if step < 3 {
+        4.0
+    } else {
+        52.0 / 30.0 * 1000.0 * 1.414
+    };
     let samples: Vec<f32> = (0..400)
         .map(|i| {
             let t = i as f32 / 400.0 * 10.0 * TAU;
@@ -65,7 +69,9 @@ fn pump_current_reading(step: usize, seed: &mut u32) -> Option<f32> {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
-        eprintln!("usage: urbivue-emulator <bin|water|pump-current> <sensorId> [readings] [intervalMs]");
+        eprintln!(
+            "usage: urbivue-emulator <bin|water|pump-current> <sensorId> [readings] [intervalMs]"
+        );
         std::process::exit(2);
     }
     let profile = args[1].as_str();
@@ -79,11 +85,20 @@ fn main() {
         .and_then(|p| p.parse().ok())
         .unwrap_or(1883);
 
-    let mut client = mqtt::MqttClient::connect(&host, port, &format!("emu-{sensor_id}"))
-        .unwrap_or_else(|e| {
-            eprintln!("MQTT connect failed: {e}");
-            std::process::exit(1);
-        });
+    // Authenticated brokers: MQTT_USERNAME (= sensor external id) and
+    // MQTT_PASSWORD (= device key) env vars, mirroring the firmware config.
+    let username = std::env::var("MQTT_USERNAME").ok();
+    let password = std::env::var("MQTT_PASSWORD").ok();
+    let credentials = match (&username, &password) {
+        (Some(u), Some(p)) => Some((u.as_str(), p.as_str())),
+        _ => None,
+    };
+    let mut client =
+        mqtt::MqttClient::connect(&host, port, &format!("emu-{sensor_id}"), credentials)
+            .unwrap_or_else(|e| {
+                eprintln!("MQTT connect failed: {e}");
+                std::process::exit(1);
+            });
     println!("emulator '{profile}' -> urbivue/ingest/{sensor_id} ({readings} readings)");
 
     let mut seed = 0x1234_5678u32;
@@ -101,10 +116,12 @@ fn main() {
             Some(v) => {
                 let topic = format!("urbivue/ingest/{sensor_id}");
                 let payload = format!("{{\"value\":{v:.3}}}");
-                client.publish(&topic, payload.as_bytes()).unwrap_or_else(|e| {
-                    eprintln!("publish failed: {e}");
-                    std::process::exit(1);
-                });
+                client
+                    .publish(&topic, payload.as_bytes())
+                    .unwrap_or_else(|e| {
+                        eprintln!("publish failed: {e}");
+                        std::process::exit(1);
+                    });
                 println!("[{step}] {payload}");
             }
             None => println!("[{step}] reading rejected by validation (as designed)"),

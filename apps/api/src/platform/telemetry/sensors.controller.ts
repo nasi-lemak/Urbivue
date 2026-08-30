@@ -13,6 +13,7 @@ import { SENSOR_KINDS } from '@urbivue/shared';
 import { z } from 'zod';
 import { DbService } from '../db/db.service';
 import { RequirePermission } from '../auth/decorators';
+import { generateDeviceKey, mosquittoHash, sha256Hex } from './device-keys';
 import { zodParse } from '../zod';
 
 /** Device provisioning payload (see docs/HARDWARE.md for the workflow). */
@@ -49,15 +50,18 @@ export class SensorsController {
       throw new BadRequestException('Provide assetCode or location');
     }
 
+    const deviceKey = generateDeviceKey();
     try {
       const result = await this.db.query<{ id: string }>(
-        `INSERT INTO sensors (asset_id, kind, external_id, unit, geom, config)
+        `INSERT INTO sensors
+           (asset_id, kind, external_id, unit, geom, config,
+            ingest_key_hash, mqtt_password_hash, key_issued_at)
          VALUES ($1, $2, $3, $4,
                  COALESCE(
                    ST_SetSRID(ST_MakePoint($5, $6), 4326),
                    (SELECT ST_PointOnSurface(geom) FROM assets WHERE id = $1)
                  ),
-                 $7)
+                 $7, $8, $9, now())
          RETURNING id`,
         [
           assetId,
@@ -67,12 +71,16 @@ export class SensorsController {
           input.location?.lon ?? null,
           input.location?.lat ?? null,
           JSON.stringify(input.config ?? {}),
+          sha256Hex(deviceKey),
+          mosquittoHash(deviceKey),
         ],
       );
       return {
         id: result.rows[0].id,
         externalId: input.externalId,
         mqttTopic: `urbivue/ingest/${input.externalId}`,
+        // Shown once; only hashes are stored. MQTT username = externalId.
+        deviceKey,
       };
     } catch (err) {
       if ((err as { code?: string }).code === '23505') {
@@ -80,6 +88,33 @@ export class SensorsController {
       }
       throw err;
     }
+  }
+
+  /** Issue a fresh key (invalidates the old one). Re-export broker auth after. */
+  @RequirePermission('platform', 'manage')
+  @Post(':id/rotate-key')
+  async rotateKey(@Param('id', ParseUUIDPipe) id: string) {
+    const deviceKey = generateDeviceKey();
+    const result = await this.db.query(
+      `UPDATE sensors SET ingest_key_hash = $2, mqtt_password_hash = $3,
+              key_issued_at = now(), key_revoked_at = NULL
+       WHERE id = $1 RETURNING external_id`,
+      [id, sha256Hex(deviceKey), mosquittoHash(deviceKey)],
+    );
+    if (!result.rowCount) throw new BadRequestException(`Unknown sensor ${id}`);
+    return { id, deviceKey };
+  }
+
+  /** Kill a compromised/decommissioned device's credentials immediately. */
+  @RequirePermission('platform', 'manage')
+  @Post(':id/revoke-key')
+  async revokeKey(@Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.db.query(
+      `UPDATE sensors SET key_revoked_at = now() WHERE id = $1 RETURNING external_id`,
+      [id],
+    );
+    if (!result.rowCount) throw new BadRequestException(`Unknown sensor ${id}`);
+    return { id, revoked: true };
   }
 
   @RequirePermission('platform', 'read')

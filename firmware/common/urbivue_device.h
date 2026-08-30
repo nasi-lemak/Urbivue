@@ -22,9 +22,14 @@
 struct UrbivueConfig {
   const char* wifiSsid;
   const char* wifiPassword;
-  const char* mqttHost;   // Urbivue broker (mosquitto), e.g. "192.168.1.10"
-  uint16_t mqttPort;      // 1883
-  const char* deviceName; // MQTT client id, unique per device
+  const char* mqttHost;      // Urbivue broker (mosquitto), e.g. "192.168.1.10"
+  uint16_t mqttPort;         // 1883
+  const char* deviceName;    // MQTT client id, unique per device
+  // Authenticated brokers (production): username = the sensor's external id,
+  // password = the device key returned once by POST /api/sensors. Leave
+  // nullptr for the anonymous dev broker.
+  const char* mqttUsername = nullptr;
+  const char* mqttPassword = nullptr;
 };
 
 class UrbivueDevice {
@@ -50,7 +55,11 @@ class UrbivueDevice {
     if (!mqtt_.connected()) {
       if (millis() - lastMqttAttempt_ > 5000) {
         lastMqttAttempt_ = millis();
-        mqtt_.connect(cfg_.deviceName);
+        if (cfg_.mqttUsername != nullptr) {
+          mqtt_.connect(cfg_.deviceName, cfg_.mqttUsername, cfg_.mqttPassword);
+        } else {
+          mqtt_.connect(cfg_.deviceName);
+        }
       }
       return mqtt_.connected();
     }

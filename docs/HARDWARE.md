@@ -38,9 +38,12 @@ Vendor platforms:  smart-lighting / bin / traffic vendor cloud --webhook--> POST
   data, battery friendly) or NB-IoT (better for pump/lighting nodes needing
   minute-cadence). The gateway or network server forwards decoded uplinks to
   `POST /api/ingest` with the ingest key — one small adapter per vendor payload.
-- **Before any public-network exposure**: enable Mosquitto authentication
-  (`infra/docker/mosquitto.conf` ships dev-only anonymous access), and treat
-  per-device credentials as required hardening (currently one shared key).
+- **Production networking is authenticated**: registering a device
+  (`POST /api/sensors`) returns a one-time device key. The device connects to
+  the production broker with username = its sensor id and password = that key,
+  and the broker's ACL only lets it publish its own topic; over HTTP the same
+  key goes in `X-Device-Key`. Keys can be rotated or revoked per device. The
+  dev broker (`mosquitto.conf`) stays anonymous for bench work only.
 
 ## 3. Device designs
 

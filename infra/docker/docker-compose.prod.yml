@@ -21,9 +21,14 @@ services:
     image: eclipse-mosquitto:2
     restart: unless-stopped
     ports:
-      - '1883:1883' # devices connect here; firewall/authenticate in production
+      - '1883:1883'
     volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      # Authenticated config. Generate passwd + acl into ./mosquitto-auth with
+      #   pnpm --filter @urbivue/api export-mqtt-auth infra/docker/mosquitto-auth <apiPassword>
+      # and re-run + restart mqtt after key changes.
+      - ./mosquitto.prod.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto-auth/passwd:/mosquitto/config/passwd:ro
+      - ./mosquitto-auth/acl:/mosquitto/config/acl:ro
 
   api:
     build:
@@ -38,6 +43,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       INGEST_API_KEY: ${INGEST_API_KEY:?set INGEST_API_KEY}
       MQTT_URL: mqtt://mqtt:1883
+      MQTT_USERNAME: urbivue-api
+      MQTT_PASSWORD: ${MQTT_API_PASSWORD:?set MQTT_API_PASSWORD}
       NODE_ENV: production
     volumes:
       - apiuploads:/app/data

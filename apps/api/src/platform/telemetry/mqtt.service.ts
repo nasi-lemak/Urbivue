@@ -19,7 +19,13 @@ export class MqttIngestService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     if (process.env.DISABLE_MQTT === 'true') return;
     const url = process.env.MQTT_URL ?? 'mqtt://localhost:1883';
-    this.client = mqtt.connect(url, { reconnectPeriod: 5000, connectTimeout: 5000 });
+    this.client = mqtt.connect(url, {
+      reconnectPeriod: 5000,
+      connectTimeout: 5000,
+      // Set on authenticated brokers (see infra/docker/mosquitto.prod.conf).
+      username: process.env.MQTT_USERNAME,
+      password: process.env.MQTT_PASSWORD,
+    });
 
     this.client.on('connect', () => {
       this.logger.log(`Connected to MQTT broker at ${url}`);

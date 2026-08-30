@@ -167,6 +167,44 @@ const sensors = await req('/sensors', { token: admin });
 const mine = sensors.json.find((s) => s.externalId === sensorId);
 ok('reading visible on sensor', mine && Number(mine.lastValue) === 12.5);
 
+// --- per-device keys ---------------------------------------------------------
+const deviceKey = sensor.json.deviceKey;
+ok(
+  'device key issued once at registration',
+  typeof deviceKey === 'string' && deviceKey.startsWith('dk_'),
+);
+
+async function deviceIngest(key, extId, value) {
+  const res = await fetch(`${API}/api/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Device-Key': key },
+    body: JSON.stringify({ readings: [{ sensorExternalId: extId, value }] }),
+  });
+  return res.status;
+}
+
+ok('device-key ingest accepted', (await deviceIngest(deviceKey, sensorId, 13.1)) === 201);
+ok('wrong device key rejected', (await deviceIngest('dk_wrong', sensorId, 1)) === 401);
+ok(
+  'device key cannot post for another sensor',
+  (await deviceIngest(deviceKey, 'WL-001', 1)) === 401,
+);
+
+const rotated = await req(`/sensors/${sensor.json.id}/rotate-key`, {
+  method: 'POST',
+  token: admin,
+});
+ok('key rotation', rotated.status === 201 && rotated.json.deviceKey !== deviceKey);
+ok('old key dead after rotation', (await deviceIngest(deviceKey, sensorId, 1)) === 401);
+ok('new key works', (await deviceIngest(rotated.json.deviceKey, sensorId, 13.2)) === 201);
+
+ok(
+  'key revocation',
+  (await req(`/sensors/${sensor.json.id}/revoke-key`, { method: 'POST', token: admin })).status ===
+    201,
+);
+ok('revoked key rejected', (await deviceIngest(rotated.json.deviceKey, sensorId, 1)) === 401);
+
 // --- zones -------------------------------------------------------------------
 const zones = await req('/zones?kind=ward', { token: admin });
 ok('wards listed', zones.status === 200 && zones.json.length >= 2);

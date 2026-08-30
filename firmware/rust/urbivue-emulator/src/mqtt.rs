@@ -30,16 +30,29 @@ fn push_utf8(buf: &mut Vec<u8>, s: &str) {
 }
 
 impl MqttClient {
-    pub fn connect(host: &str, port: u16, client_id: &str) -> std::io::Result<Self> {
+    pub fn connect(
+        host: &str,
+        port: u16,
+        client_id: &str,
+        credentials: Option<(&str, &str)>,
+    ) -> std::io::Result<Self> {
         let stream = TcpStream::connect((host, port))?;
         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
 
+        let mut flags = 0x02u8; // clean session
+        if credentials.is_some() {
+            flags |= 0x80 | 0x40; // username + password present
+        }
         let mut var = Vec::new();
         push_utf8(&mut var, "MQTT");
         var.push(0x04); // protocol level 3.1.1
-        var.push(0x02); // clean session
+        var.push(flags);
         var.extend_from_slice(&60u16.to_be_bytes()); // keepalive
         push_utf8(&mut var, client_id);
+        if let Some((username, password)) = credentials {
+            push_utf8(&mut var, username);
+            push_utf8(&mut var, password);
+        }
 
         let mut packet = vec![0x10];
         encode_remaining_length(var.len(), &mut packet);

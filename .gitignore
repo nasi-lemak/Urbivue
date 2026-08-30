@@ -8,3 +8,4 @@ coverage/
 infra/docker/data/
 data/
 firmware/rust/target/
+infra/docker/mosquitto-auth*/

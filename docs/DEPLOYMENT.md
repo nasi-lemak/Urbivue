@@ -97,7 +97,15 @@ retention policies are wired in (tracked as a deferred item).
 - All staff endpoints require JWT auth; public endpoints are read-only except report
   intake and ratings, which are rate-limited per IP.
 - Set a strong `JWT_SECRET`; the API refuses to boot in production without one.
-- Rotate `INGEST_API_KEY` by updating the env and restarting; devices/gateways need the
-  new key. (Per-device credentials are a deferred hardening item.)
-- Mosquitto must not run with `allow_anonymous true` if port 1883 is exposed beyond a
-  private network.
+- `INGEST_API_KEY` is the *gateway* key (LoRaWAN bridges, vendor webhooks). Individual
+  devices use per-device keys: issued once by `POST /api/sensors`, presented as
+  `X-Device-Key` over HTTP (valid only for that device's own sensor) or as the MQTT
+  password (username = the sensor's external id). Rotate with
+  `POST /api/sensors/:id/rotate-key`, kill instantly with `.../revoke-key`.
+- The production broker (`mosquitto.prod.conf`) refuses anonymous connections and
+  enforces per-device topic isolation (a device can only publish
+  `urbivue/ingest/<its own id>`). Generate its password/ACL files with
+  `pnpm --filter @urbivue/api export-mqtt-auth infra/docker/mosquitto-auth <apiPassword>`
+  and re-run + restart the mqtt container after issuing/rotating/revoking keys. Make the
+  passwd file readable by the container's mosquitto user (chown 1883 or chmod 640). Set
+  `MQTT_API_PASSWORD` so the API can subscribe as `urbivue-api`.
