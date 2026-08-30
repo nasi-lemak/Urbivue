@@ -54,6 +54,9 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Firmware core tests (Rust)
+        run: cargo test --manifest-path firmware/rust/Cargo.toml
+
       - name: Database migrations + seed (against live PostGIS/Timescale)
         run: |
           pnpm db:migrate

@@ -1,0 +1,9 @@
+[package]
+name = "urbivue-core"
+version = "0.1.0"
+edition = "2021"
+description = "Pure measurement logic for Urbivue sensor devices — no_std, zero dependencies, host-testable"
+
+[dependencies]
+# Deliberately none: everything here must run identically on an ESP32-C3
+# (no_std) and on the host (cargo test / the emulator).

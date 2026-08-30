@@ -1,0 +1,10 @@
+[package]
+name = "urbivue-emulator"
+version = "0.1.0"
+edition = "2021"
+description = "Host-side device emulator: runs urbivue-core measurement logic against the live platform over MQTT"
+
+[dependencies]
+urbivue-core = { path = "../urbivue-core" }
+# No other dependencies: the MQTT publish path is ~100 lines of MQTT 3.1.1,
+# mirroring how small the real device contract is.
