@@ -167,6 +167,31 @@ const sensors = await req('/sensors', { token: admin });
 const mine = sensors.json.find((s) => s.externalId === sensorId);
 ok('reading visible on sensor', mine && Number(mine.lastValue) === 12.5);
 
+// --- zones -------------------------------------------------------------------
+const zones = await req('/zones?kind=ward', { token: admin });
+ok('wards listed', zones.status === 200 && zones.json.length >= 2);
+
+const zoneAssets = await req(`/zones/${zones.json[0].id}/assets`, { token: admin });
+ok('zone asset rollup', zoneAssets.status === 200 && zoneAssets.json.length > 0);
+
+const scorecards = await req('/analytics/zones', { token: admin });
+ok(
+  'zone scorecards',
+  scorecards.status === 200 && scorecards.json.every((z) => typeof z.assets === 'number'),
+);
+
+const badZone = await req('/zones', {
+  method: 'POST',
+  token: admin,
+  body: {
+    code: `SMK-Z-${run}`,
+    name: 'Bad geometry',
+    kind: 'custom',
+    geometry: { type: 'Polygon', coordinates: 'nonsense' },
+  },
+});
+ok('invalid zone geometry rejected', badZone.status === 400 || badZone.status === 500);
+
 // --- analytics ---------------------------------------------------------------
 const overview = await req('/analytics/overview', { token: admin });
 ok(

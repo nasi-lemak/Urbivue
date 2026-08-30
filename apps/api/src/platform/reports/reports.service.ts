@@ -105,9 +105,15 @@ export class ReportsService {
     const result = await this.db.query(
       `SELECT ${REPORT_COLUMNS},
               (SELECT count(*)::int FROM citizen_reports d WHERE d.duplicate_of_id = r.id)
-                AS "duplicateCount"
+                AS "duplicateCount",
+              ward.code AS "wardCode"
        FROM citizen_reports r
        LEFT JOIN assets a ON a.id = r.matched_asset_id
+       LEFT JOIN LATERAL (
+         SELECT code FROM zones z
+         WHERE z.kind = 'ward' AND ST_Intersects(r.geom, z.geom)
+         LIMIT 1
+       ) ward ON TRUE
        WHERE r.duplicate_of_id IS NULL
          AND (($2 AND r.status NOT IN ('resolved', 'closed')) OR r.status = $1::report_status)
        ORDER BY r.created_at DESC

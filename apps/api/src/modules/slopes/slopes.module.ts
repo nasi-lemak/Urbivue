@@ -23,16 +23,23 @@ export class SlopesService implements OnModuleInit {
   onModuleInit() {
     this.events.onIncidentOpened(async (event) => {
       if (event.ruleKey === 'flood.rain_intense') {
-        await this.raiseRainWatch(event.title);
+        await this.raiseRainWatch(event.title, event.sensorId);
       }
     });
   }
 
-  private async raiseRainWatch(triggerTitle: string): Promise<void> {
+  private async raiseRainWatch(triggerTitle: string, sensorId?: string | null): Promise<void> {
+    // Rain is physical, not administrative: scope to slopes within 3 km of
+    // the reporting gauge (falls back to all high-risk slopes when the
+    // gauge has no location).
     const slopes = await this.db.query<{ id: string; code: string; name: string }>(
-      `SELECT id, code, name FROM assets
-       WHERE type_id = 'slope' AND status <> 'decommissioned'
-         AND attributes->>'riskRanking' = 'high'`,
+      `SELECT a.id, a.code, a.name FROM assets a
+       LEFT JOIN sensors s ON s.id = $1
+       WHERE a.type_id = 'slope' AND a.status <> 'decommissioned'
+         AND a.attributes->>'riskRanking' = 'high'
+         AND (s.geom IS NULL
+              OR ST_DWithin(a.geom::geography, s.geom::geography, 3000))`,
+      [sensorId ?? null],
     );
     for (const slope of slopes.rows) {
       const opened = await this.rules.openModuleIncident({

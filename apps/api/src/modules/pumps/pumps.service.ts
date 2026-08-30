@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../../platform/db/db.service';
 import { PlatformEventsService } from '../../platform/events/events.service';
 import { RulesService } from '../../platform/rules/rules.service';
+import { ZonesService } from '../../platform/zones/zones.module';
 
 /** A run-status reading older than this no longer proves the pump is running. */
 const RUN_STATUS_FRESH_MINUTES = 15;
@@ -14,15 +15,19 @@ export class PumpsService implements OnModuleInit {
     private readonly db: DbService,
     private readonly events: PlatformEventsService,
     private readonly rules: RulesService,
+    private readonly zones: ZonesService,
   ) {}
 
   onModuleInit() {
-    // Flood interlock: when a water-level alert opens, verify stations are
-    // pumping. Zone-scoping comes with the zones entity; until then every
-    // station is checked (acceptable at municipal station counts).
+    // Flood interlock: when a water-level alert opens, verify stations in
+    // the affected ward(s) are pumping. A sensor outside any ward falls
+    // back to checking every station (small-town mode).
     this.events.onIncidentOpened(async (event) => {
       if (event.module === 'flood' && event.ruleKey?.startsWith('flood.level')) {
-        await this.checkStationsDuringFlood(event.title);
+        const zoneIds = event.sensorId
+          ? await this.zones.zoneIdsForSensor(event.sensorId, 'ward')
+          : [];
+        await this.checkStationsDuringFlood(event.title, zoneIds);
       }
     });
   }
@@ -56,11 +61,15 @@ export class PumpsService implements OnModuleInit {
     return result.rows;
   }
 
-  private async checkStationsDuringFlood(triggerTitle: string): Promise<void> {
+  private async checkStationsDuringFlood(triggerTitle: string, zoneIds: string[]): Promise<void> {
     const idle = await this.db.query<{ id: string; code: string; name: string }>(
       `SELECT st.id, st.code, st.name
        FROM assets st
        WHERE st.type_id = 'pump_station' AND st.status = 'active'
+         AND (cardinality($2::uuid[]) = 0 OR EXISTS (
+           SELECT 1 FROM zones z
+           WHERE z.id = ANY($2) AND ST_Intersects(st.geom, z.geom)
+         ))
          AND NOT EXISTS (
            SELECT 1
            FROM assets p
@@ -70,7 +79,7 @@ export class PumpsService implements OnModuleInit {
              AND r.ts > now() - ($1 || ' minutes')::interval
              AND r.value = 1
          )`,
-      [RUN_STATUS_FRESH_MINUTES],
+      [RUN_STATUS_FRESH_MINUTES, zoneIds],
     );
     for (const station of idle.rows) {
       const opened = await this.rules.openModuleIncident({

@@ -566,6 +566,44 @@ const SEED_SCHEDULES = [
   },
 ];
 
+/** Two demo wards splitting the city centre; drives zone-scoped interlocks. */
+const SEED_ZONES = [
+  {
+    code: 'WARD-A',
+    name: 'Ward A (river west)',
+    kind: 'ward',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [101.688, 3.157],
+          [101.6962, 3.157],
+          [101.6962, 3.138],
+          [101.688, 3.138],
+          [101.688, 3.157],
+        ],
+      ],
+    },
+  },
+  {
+    code: 'WARD-B',
+    name: 'Ward B (river east)',
+    kind: 'ward',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [101.6962, 3.157],
+          [101.703, 3.157],
+          [101.703, 3.138],
+          [101.6962, 3.138],
+          [101.6962, 3.157],
+        ],
+      ],
+    },
+  },
+];
+
 async function seed() {
   const pool = new Pool({ connectionString: databaseUrl() });
 
@@ -654,6 +692,17 @@ async function seed() {
     );
   }
   console.log(`Schedules ensured: ${SEED_SCHEDULES.map((s) => s.key).join(', ')}`);
+
+  for (const zone of SEED_ZONES) {
+    await pool.query(
+      `INSERT INTO zones (code, name, kind, geom)
+       VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4), 4326))
+       ON CONFLICT (code) DO UPDATE SET
+         name = EXCLUDED.name, kind = EXCLUDED.kind, geom = EXCLUDED.geom`,
+      [zone.code, zone.name, zone.kind, JSON.stringify(zone.geometry)],
+    );
+  }
+  console.log(`Zones ensured: ${SEED_ZONES.map((z) => z.code).join(', ')}`);
 
   await pool.end();
 }

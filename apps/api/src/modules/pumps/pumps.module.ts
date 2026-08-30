@@ -1,5 +1,6 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { RulesModule } from '../../platform/rules/rules.module';
+import { ZonesModule } from '../../platform/zones/zones.module';
 import { RequirePermission } from '../../platform/auth/decorators';
 import { PumpsService } from './pumps.service';
 
@@ -15,7 +16,7 @@ class PumpsController {
 }
 
 @Module({
-  imports: [RulesModule],
+  imports: [RulesModule, ZonesModule],
   controllers: [PumpsController],
   providers: [PumpsService],
 })
