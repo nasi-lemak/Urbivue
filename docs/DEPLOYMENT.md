@@ -25,6 +25,7 @@ Set these in the shell or an `.env` file next to the compose file:
 | `INGEST_API_KEY` | yes | Shared key for HTTP telemetry ingestion |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | first run | Initial admin account for the seed |
 | `ALERT_WEBHOOK_URL` | no | JSON webhook notification channel |
+| `REPORTER_WEBHOOK_URL` | no | Citizen status-update gateway: receives `{contact, reportId, status, message}` on report transitions — wire to your SMS/email provider |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | no | Telegram notification channel |
 | `LIGHTING_ON_START` / `LIGHTING_ON_END` | no | Street-lighting on-hours (default 19 / 7, server-local time) |
 | `PUBLIC_RATE_LIMIT_PER_MINUTE` | no | Per-IP limit on public report/rating POSTs (default 10) |

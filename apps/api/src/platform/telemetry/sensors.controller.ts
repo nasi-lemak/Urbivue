@@ -159,6 +159,7 @@ export class SensorsController {
                 avg(value) AS avg, min(value) AS min, max(value) AS max, count(*)::int AS count
          FROM readings
          WHERE sensor_id = $1
+           AND quality <> 'bad'
            AND ($2::timestamptz IS NULL OR ts >= $2)
            AND ($3::timestamptz IS NULL OR ts <= $3)
          GROUP BY 1 ORDER BY 1 DESC LIMIT $4`,

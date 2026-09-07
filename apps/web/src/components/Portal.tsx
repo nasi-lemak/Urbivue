@@ -70,6 +70,7 @@ export function Portal() {
   pickingRef.current = picking;
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [contact, setContact] = useState('');
   const [location, setLocation] = useState<{ lon: number; lat: number } | null>(null);
   const [submitResult, setSubmitResult] = useState<{
     id: string;
@@ -293,12 +294,18 @@ export function Portal() {
       const res = await fetch('/api/public/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, description, location }),
+        body: JSON.stringify({
+          category,
+          description,
+          location,
+          contact: contact.trim() || undefined,
+        }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.errors?.join('; ') ?? body.message);
       setSubmitResult(body);
       setDescription('');
+      setContact('');
       markerRef.current?.remove();
       setLocation(null);
     } catch (err) {
@@ -400,6 +407,14 @@ export function Portal() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe the issue (at least 10 characters)"
+                  />
+                </label>
+                <label>
+                  Phone or email (optional — for status updates)
+                  <input
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    placeholder="e.g. +60 12-345 6789"
                   />
                 </label>
                 <button className={picking ? 'primary' : ''} onClick={() => setPicking(!picking)}>

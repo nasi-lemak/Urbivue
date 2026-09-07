@@ -14,6 +14,15 @@ const DUPLICATE_RADIUS_M = 50;
 /** How far to look for the asset a report is about. */
 const ASSET_MATCH_RADIUS_M = 100;
 
+/** Citizen-facing wording per status; internal statuses share one message. */
+const REPORTER_MESSAGES: Record<ReportStatus, string | null> = {
+  new: null, // intake confirmation is the portal's submit response
+  triaged: 'Your report has been reviewed and queued for action.',
+  in_progress: 'A crew has been assigned to your report.',
+  resolved: 'Your report has been resolved. Thank you for helping keep the city working.',
+  closed: 'Your report has been closed.',
+};
+
 const REPORT_COLUMNS = `
   r.id, r.category, r.module, r.description, r.status,
   r.reporter_contact AS "reporterContact",
@@ -134,11 +143,21 @@ export class ReportsService {
         `Cannot transition report from '${current.rows[0].status}' to '${to}'`,
       );
     }
-    await this.db.query(
+    // Duplicates move with the original — and their reporters get told too.
+    const updated = await this.db.query<{ id: string; reporter_contact: string | null }>(
       `UPDATE citizen_reports SET status = $2::report_status
-       WHERE id = $1 OR duplicate_of_id = $1`,
+       WHERE id = $1 OR duplicate_of_id = $1
+       RETURNING id, reporter_contact`,
       [id, to],
     );
+    const message = REPORTER_MESSAGES[to];
+    if (message) {
+      for (const row of updated.rows) {
+        if (row.reporter_contact) {
+          this.notifications.notifyReporter(row.reporter_contact, row.id, to, message);
+        }
+      }
+    }
     return { id, status: to };
   }
 

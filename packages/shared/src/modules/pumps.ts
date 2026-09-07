@@ -31,6 +31,8 @@ registerAssetType({
       headM: z.number().positive().optional(),
       powerKw: z.number().positive().optional(),
       driveType: z.enum(['electric', 'diesel']).optional(),
+      /** Preventive service is due after this many run-hours (default 500). */
+      serviceIntervalHours: z.number().positive().optional(),
       notes: z.string().optional(),
     })
     .strict(),

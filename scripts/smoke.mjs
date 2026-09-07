@@ -205,6 +205,43 @@ ok(
 );
 ok('revoked key rejected', (await deviceIngest(rotated.json.deviceKey, sensorId, 1)) === 401);
 
+// --- quality-aware rules ------------------------------------------------------
+const qsId = `SMQ-${run}`.toUpperCase();
+const qSensor = await req('/sensors', {
+  method: 'POST',
+  token: admin,
+  body: { externalId: qsId, kind: 'water_level', unit: 'm', location: { lon: 101.71, lat: 3.16 } },
+});
+ok('quality test sensor registered', qSensor.status === 201);
+
+async function gatewayIngest(extId, value, quality) {
+  const res = await fetch(`${API}/api/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Ingest-Key': INGEST_KEY },
+    body: JSON.stringify({ readings: [{ sensorExternalId: extId, value, quality }] }),
+  });
+  return res.status;
+}
+
+ok('bad-quality reading accepted', (await gatewayIngest(qsId, 3.0, 'bad')) === 201);
+let open = await req('/incidents?status=unresolved', { token: admin });
+ok(
+  'bad-quality breach opens no incident',
+  open.status === 200 && !open.json.some((i) => i.title.includes(qsId)),
+);
+
+ok('good-quality reading accepted', (await gatewayIngest(qsId, 3.0, 'good')) === 201);
+open = await req('/incidents?status=unresolved', { token: admin });
+const qIncidents = open.json.filter((i) => i.title.includes(qsId));
+ok('good-quality breach opens incident', qIncidents.length > 0);
+for (const i of qIncidents) {
+  await req(`/incidents/${i.id}/resolve`, { method: 'POST', token: admin });
+}
+
+// --- run-hours pump servicing -------------------------------------------------
+const svc = await req('/pumps/service-check', { method: 'POST', token: admin });
+ok('pump service sweep runs', svc.status === 201 && Array.isArray(svc.json));
+
 // --- zones -------------------------------------------------------------------
 const zones = await req('/zones?kind=ward', { token: admin });
 ok('wards listed', zones.status === 200 && zones.json.length >= 2);

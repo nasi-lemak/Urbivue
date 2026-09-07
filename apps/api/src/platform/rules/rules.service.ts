@@ -60,8 +60,19 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
     return result.rows;
   }
 
-  /** Called by the ingest pipeline for every accepted reading. */
-  async evaluateReading(sensor: SensorRow, value: number, ts: Date): Promise<void> {
+  /**
+   * Called by the ingest pipeline for every accepted reading. Only 'good'
+   * readings drive rules: a 'suspect' or 'bad' value neither opens nor
+   * clears incidents (it is still stored, and still counts as the sensor
+   * being alive for absence purposes).
+   */
+  async evaluateReading(
+    sensor: SensorRow,
+    value: number,
+    ts: Date,
+    quality: 'good' | 'suspect' | 'bad' = 'good',
+  ): Promise<void> {
+    if (quality !== 'good') return;
     const rules = (await this.enabledRules()).filter((r) => r.sensor_kind === sensor.kind);
     for (const rule of rules) {
       try {
@@ -78,6 +89,7 @@ export class RulesService implements OnModuleInit, OnModuleDestroy {
           const base = await this.db.query<{ value: number }>(
             `SELECT value FROM readings
              WHERE sensor_id = $1 AND ts >= $2::timestamptz - ($3 || ' minutes')::interval
+               AND quality = 'good'
              ORDER BY ts ASC LIMIT 1`,
             [sensor.id, ts.toISOString(), params.windowMinutes],
           );

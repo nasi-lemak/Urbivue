@@ -57,6 +57,6 @@ export class IngestService {
 
     // A sensor that reports again heals its own silence incidents.
     await this.rules.resolveAbsenceIncidents(sensor.id);
-    await this.rules.evaluateReading(sensor, reading.value, ts);
+    await this.rules.evaluateReading(sensor, reading.value, ts, reading.quality ?? 'good');
   }
 }

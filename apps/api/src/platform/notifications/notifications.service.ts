@@ -7,7 +7,11 @@ import { counters } from '../metrics/counters';
  *  - log:      always on
  *  - webhook:  ALERT_WEBHOOK_URL (generic JSON POST — Slack/Discord/hooks)
  *  - telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
- * All sends are fire-and-forget; a failing channel never breaks the caller.
+ * Reporter (citizen-facing) messages go to REPORTER_WEBHOOK_URL — an adapter
+ * the city wires to its SMS/email gateway; the contact string passes through
+ * verbatim, so whatever the portal collected (phone, email) is what the
+ * gateway receives. All sends are fire-and-forget; a failing channel never
+ * breaks the caller.
  */
 @Injectable()
 export class NotificationsService {
@@ -38,5 +42,25 @@ export class NotificationsService {
         body: JSON.stringify({ chat_id: chatId, text: `${icon} ${title}` }),
       }).catch((err) => this.logger.warn(`Telegram notification failed: ${err}`));
     }
+  }
+
+  /** Status update to the citizen who filed a report. No-op without a gateway. */
+  notifyReporter(contact: string, reportId: string, status: string, message: string): void {
+    this.logger.log(`Reporter update [${reportId} -> ${status}]`);
+    const gateway = process.env.REPORTER_WEBHOOK_URL;
+    if (!gateway) return;
+    counters.notificationsSent++;
+    fetch(gateway, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'urbivue',
+        kind: 'report_status',
+        contact,
+        reportId,
+        status,
+        message,
+      }),
+    }).catch((err) => this.logger.warn(`Reporter notification failed: ${err}`));
   }
 }
