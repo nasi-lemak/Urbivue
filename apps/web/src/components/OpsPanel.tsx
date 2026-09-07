@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { dismissFailed, useOfflineQueue } from '../lib/offline';
 import { SensorChart } from './SensorChart';
 
 const POLL_MS = 8000;
@@ -90,6 +91,7 @@ export function OpsPanel() {
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [chartSensor, setChartSensor] = useState<string | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const { pending, failed, flush } = useOfflineQueue();
 
   const refresh = useCallback(() => {
     api<Incident[]>('/incidents?status=unresolved')
@@ -164,10 +166,32 @@ export function OpsPanel() {
             Overview
           </button>
         </div>
+        {pending.length > 0 && (
+          <button className="offline-badge" onClick={() => void flush()} title="Retry sync now">
+            ⏳ {pending.length} offline — sync
+          </button>
+        )}
         <button className="collapse-btn" onClick={() => setCollapsed((c) => !c)}>
           {collapsed ? '▴' : '▾'}
         </button>
       </div>
+
+      {!collapsed && failed.length > 0 && (
+        <div className="offline-failed">
+          {failed.map((f) => (
+            <div key={f.id} className="incident-row">
+              <span className="dot" style={{ background: '#dc2626' }} />
+              <div className="incident-main">
+                <div className="incident-title">Sync rejected: {f.label}</div>
+                <div className="muted">Queued {new Date(f.queuedAt).toLocaleString()}</div>
+              </div>
+              <div className="incident-actions">
+                <button onClick={() => dismissFailed(f.id)}>Dismiss</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!collapsed && tab === 'incidents' && (
         <div className="incidents-list">

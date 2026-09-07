@@ -102,7 +102,18 @@ INTERVAL '730 days');`. On plain Postgres both are skipped — fall back to a sc
 - The absence rules watch the sensors; nothing watches the API but your uptime monitor —
   do set one up.
 
-## 7. Security notes
+## 7. Field use (offline behavior)
+
+The staff app works out of coverage: a service worker caches the app shell (it
+reopens offline once it has been loaded online at least once), inspection
+templates are cached per asset type, and inspection submissions that fail with
+a network error are queued in the browser and replayed automatically when
+connectivity returns (or via the "sync" badge in the ops panel). Submissions
+the server rejects on replay are surfaced for the crew to redo rather than
+silently dropped. Crews should open the app — and the assets they'll visit —
+while still in coverage; live map data is intentionally never cached.
+
+## 8. Security notes
 
 - All staff endpoints require JWT auth; public endpoints are read-only except report
   intake and ratings, which are rate-limited per IP.

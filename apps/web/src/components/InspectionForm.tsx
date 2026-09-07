@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
+import { cachedGet, enqueue, isNetworkError } from '../lib/offline';
 import type { AssetFeature } from '../types';
 
 interface ChecklistItem {
@@ -21,7 +22,7 @@ interface Template {
 interface Props {
   asset: AssetFeature;
   onClose: () => void;
-  onSubmitted: (result: { workOrderId?: string }) => void;
+  onSubmitted: (result: { workOrderId?: string; queuedOffline?: boolean }) => void;
 }
 
 export function InspectionForm({ asset, onClose, onSubmitted }: Props) {
@@ -33,10 +34,14 @@ export function InspectionForm({ asset, onClose, onSubmitted }: Props) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api<Template[]>(`/inspection-templates?assetType=${asset.properties.typeId}`).then((list) => {
-      setTemplates(list);
-      if (list.length) setTemplateKey(list[0].key);
-    });
+    // cachedGet keeps the last-seen templates so the form still opens
+    // when the crew is out of coverage.
+    cachedGet<Template[]>(`/inspection-templates?assetType=${asset.properties.typeId}`).then(
+      (list) => {
+        setTemplates(list);
+        if (list.length) setTemplateKey(list[0].key);
+      },
+    );
   }, [asset.properties.typeId]);
 
   const template = templates.find((t) => t.key === templateKey);
@@ -47,20 +52,33 @@ export function InspectionForm({ asset, onClose, onSubmitted }: Props) {
   const submit = async () => {
     setBusy(true);
     setError(null);
+    const payload = {
+      assetId: asset.properties.id,
+      templateKey,
+      responses,
+      conditionScore: conditionScore ? Number(conditionScore) : undefined,
+    };
     try {
       const result = await api<{ id: string; workOrderId?: string }>('/inspections', {
         method: 'POST',
-        body: JSON.stringify({
-          assetId: asset.properties.id,
-          templateKey,
-          responses,
-          conditionScore: conditionScore ? Number(conditionScore) : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       onSubmitted(result);
     } catch (err) {
-      if (err instanceof ApiError && err.errors?.length) setError(err.errors.join('; '));
-      else setError(err instanceof Error ? err.message : 'Submit failed');
+      if (isNetworkError(err)) {
+        // Out of coverage: park it in the offline queue and move on.
+        enqueue(
+          '/inspections',
+          'POST',
+          payload,
+          `Inspection of ${asset.properties.code} (${template?.name ?? templateKey})`,
+        );
+        onSubmitted({ queuedOffline: true });
+      } else if (err instanceof ApiError && err.errors?.length) {
+        setError(err.errors.join('; '));
+      } else {
+        setError(err instanceof Error ? err.message : 'Submit failed');
+      }
     } finally {
       setBusy(false);
     }

@@ -133,9 +133,11 @@ export function AssetDrawer({ asset, onClose, onChanged }: Props) {
             onSubmitted={(result) => {
               setInspecting(false);
               setFlash(
-                result.workOrderId
-                  ? 'Inspection saved — cleaning work order auto-created.'
-                  : 'Inspection saved.',
+                result.queuedOffline
+                  ? 'No connection — inspection saved offline and will sync automatically.'
+                  : result.workOrderId
+                    ? 'Inspection saved — cleaning work order auto-created.'
+                    : 'Inspection saved.',
               );
             }}
           />
