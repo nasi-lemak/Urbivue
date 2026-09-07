@@ -4,6 +4,66 @@ import { api, ApiError } from '../lib/api';
 import { InspectionForm } from './InspectionForm';
 import type { AssetFeature } from '../types';
 
+interface TraceResult {
+  start: string;
+  direction: 'upstream' | 'downstream';
+  lines: { code: string; depth: number; blockagePct?: number | null }[];
+  nodes: { code: string; kind: string | null; name: string | null }[];
+}
+
+/** Up/downstream walk of the drain network from this line or node. */
+function DrainTrace({ code }: { code: string }) {
+  const [trace, setTrace] = useState<TraceResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async (direction: 'upstream' | 'downstream') => {
+    setBusy(true);
+    try {
+      setTrace(await api<TraceResult>(`/drainage/network/${code}/trace?direction=${direction}`));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="drain-trace">
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button onClick={() => run('upstream')} disabled={busy}>
+          ↑ Trace upstream
+        </button>
+        <button onClick={() => run('downstream')} disabled={busy}>
+          ↓ Trace downstream
+        </button>
+      </div>
+      {trace && (
+        <div style={{ marginTop: '0.5rem' }}>
+          {trace.lines.length === 0 && (
+            <p className="muted">
+              Nothing {trace.direction} of {trace.start}.
+            </p>
+          )}
+          {trace.lines
+            .filter((l) => l.code !== code)
+            .map((l) => (
+              <p key={l.code} className="muted" style={{ margin: '0.15rem 0' }}>
+                {'· '.repeat(l.depth)}
+                {l.code}
+                {l.blockagePct != null && l.blockagePct >= 50 && (
+                  <strong style={{ color: '#b91c1c' }}> — {l.blockagePct}% blocked</strong>
+                )}
+              </p>
+            ))}
+          {trace.nodes.map((n) => (
+            <p key={n.code} className="muted" style={{ margin: '0.15rem 0' }}>
+              {n.code} ({n.kind ?? 'node'}){n.kind === 'outfall' ? ' — discharge point' : ''}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   asset: AssetFeature;
   onClose: () => void;
@@ -108,6 +168,7 @@ export function AssetDrawer({ asset, onClose, onChanged }: Props) {
               onChange={(e) => setAttributesText(e.target.value)}
             />
           </label>
+          {(p.typeId === 'drain_line' || p.typeId === 'drain_node') && <DrainTrace code={p.code} />}
           <p className="muted">Last updated {new Date(p.updatedAt).toLocaleString()}</p>
           {error && <div className="error">{error}</div>}
         </div>

@@ -238,6 +238,25 @@ for (const i of qIncidents) {
   await req(`/incidents/${i.id}/resolve`, { method: 'POST', token: admin });
 }
 
+// --- drainage network traversal ----------------------------------------------
+const down = await req('/drainage/network/DRN-N001/trace?direction=downstream', { token: admin });
+ok(
+  'drainage downstream trace',
+  down.status === 200 &&
+    down.json.lines.map((l) => l.code).join(',') === 'DRN-L001,DRN-L002' &&
+    down.json.nodes.some((n) => n.kind === 'outfall'),
+);
+const up = await req('/drainage/network/DRN-L002/trace?direction=upstream', { token: admin });
+ok(
+  'drainage upstream trace from a line',
+  up.status === 200 && up.json.lines.some((l) => l.code === 'DRN-L001' && l.depth === 1),
+);
+ok(
+  'drainage trace validates direction',
+  (await req('/drainage/network/DRN-N001/trace?direction=sideways', { token: admin })).status ===
+    400,
+);
+
 // --- run-hours pump servicing -------------------------------------------------
 const svc = await req('/pumps/service-check', { method: 'POST', token: admin });
 ok('pump service sweep runs', svc.status === 201 && Array.isArray(svc.json));

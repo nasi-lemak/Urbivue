@@ -17,6 +17,7 @@ import { MetricsModule } from './platform/metrics/metrics.module';
 import { UsersModule } from './platform/users/users.module';
 import { AttachmentsModule } from './platform/attachments/attachments.module';
 import { ZonesModule } from './platform/zones/zones.module';
+import { DrainageModule } from './modules/drainage/drainage.module';
 import { PumpsModule } from './modules/pumps/pumps.module';
 import { SlopesModule } from './modules/slopes/slopes.module';
 import { LightingModule } from './modules/lighting/lighting.module';
@@ -44,6 +45,7 @@ import { HealthController } from './platform/health.controller';
     UsersModule,
     AttachmentsModule,
     ZonesModule,
+    DrainageModule,
     PumpsModule,
     SlopesModule,
     LightingModule,
