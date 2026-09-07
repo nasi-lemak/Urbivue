@@ -29,6 +29,7 @@ Set these in the shell or an `.env` file next to the compose file:
 | `LIGHTING_ON_START` / `LIGHTING_ON_END` | no | Street-lighting on-hours (default 19 / 7, server-local time) |
 | `PUBLIC_RATE_LIMIT_PER_MINUTE` | no | Per-IP limit on public report/rating POSTs (default 10) |
 | `DEPOT_LON` / `DEPOT_LAT` | no | Start point for bin collection routing |
+| `METRICS_TOKEN` | no | Bearer token required by `GET /api/metrics` (leave unset for internal-only scraping) |
 
 ## 3. First deployment
 
@@ -79,13 +80,21 @@ docker compose -f infra/docker/docker-compose.prod.yml exec -T db \
   pg_restore -U urbivue -d urbivue --clean --if-exists < /backups/urbivue-YYYY-MM-DD.dump
 ```
 
-Readings are the bulk of the data. Retention: raw readings can be trimmed with a simple
-scheduled `DELETE FROM readings WHERE ts < now() - interval '90 days'` until Timescale
-retention policies are wired in (tracked as a deferred item).
+Readings are the bulk of the data, and their lifecycle is automatic on TimescaleDB
+(migration 0010): chunks older than 7 days are columnar-compressed (~10× smaller,
+still queryable), and raw data older than 365 days is dropped. Change the horizon with
+`SELECT remove_retention_policy('readings'); SELECT add_retention_policy('readings',
+INTERVAL '730 days');`. On plain Postgres both are skipped — fall back to a scheduled
+`DELETE FROM readings WHERE ts < now() - interval '365 days'`.
 
 ## 6. Monitoring the platform itself
 
 - `GET /api/health` — liveness (checks the DB round-trip); wire to your uptime monitor.
+- `GET /api/metrics` — Prometheus text format: open incidents by severity, stale sensor
+  count, active work orders, ingestion counters, DB reachability. Point a Prometheus
+  scrape job at it (set `METRICS_TOKEN` and a `bearer_token` in the scrape config if the
+  endpoint is reachable from outside your monitoring network) and alert on
+  `urbivue_db_up == 0`, `urbivue_sensors_stale`, and `urbivue_incidents_open{severity="critical"}`.
 - API logs are structured NestJS output on stdout — `docker compose logs -f api`.
 - Every alert also goes to the log channel, so a log aggregator captures incident history
   even without webhook/Telegram configured.

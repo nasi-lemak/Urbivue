@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { IngestReading } from '@urbivue/shared';
 import { DbService } from '../db/db.service';
+import { counters } from '../metrics/counters';
 import { RulesService, SensorRow } from '../rules/rules.service';
 
 export interface IngestResult {
@@ -21,7 +22,9 @@ export class IngestService {
       try {
         await this.ingestOne(reading);
         result.accepted++;
+        counters.readingsAccepted++;
       } catch (err) {
+        counters.readingsRejected++;
         result.rejected.push({
           sensorExternalId: reading.sensorExternalId,
           reason: (err as Error).message,

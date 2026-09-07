@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Severity } from '@urbivue/shared';
+import { counters } from '../metrics/counters';
 
 /**
  * Notification fan-out. Channels are enabled by environment:
@@ -14,6 +15,7 @@ export class NotificationsService {
 
   notify(severity: Severity, title: string, context: Record<string, unknown> = {}): void {
     this.logger.warn(`[${severity.toUpperCase()}] ${title}`);
+    counters.notificationsSent++;
 
     const payload = { source: 'urbivue', severity, title, ...context };
 

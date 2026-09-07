@@ -13,6 +13,7 @@ import { WorkflowModule } from './platform/workflow/workflow.module';
 import { ReportsModule } from './platform/reports/reports.module';
 import { EventsModule } from './platform/events/events.module';
 import { AnalyticsModule } from './platform/analytics/analytics.module';
+import { MetricsModule } from './platform/metrics/metrics.module';
 import { UsersModule } from './platform/users/users.module';
 import { AttachmentsModule } from './platform/attachments/attachments.module';
 import { ZonesModule } from './platform/zones/zones.module';
@@ -39,6 +40,7 @@ import { HealthController } from './platform/health.controller';
     WorkflowModule,
     ReportsModule,
     AnalyticsModule,
+    MetricsModule,
     UsersModule,
     AttachmentsModule,
     ZonesModule,

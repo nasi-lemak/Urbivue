@@ -449,3 +449,31 @@ label {
   display: flex;
   gap: 0.3rem;
 }
+
+.sensor-chart {
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  background: #fafafa;
+}
+.chart-ranges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+.chart-ranges button {
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  border-radius: 999px;
+}
+.chart-ranges button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.chart-readout {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}

@@ -230,6 +230,17 @@ const badZone = await req('/zones', {
 });
 ok('invalid zone geometry rejected', badZone.status === 400 || badZone.status === 500);
 
+// --- metrics -----------------------------------------------------------------
+const metricsRes = await fetch(`${API}/api/metrics`);
+const metricsText = await metricsRes.text();
+ok(
+  'metrics endpoint',
+  metricsRes.status === 200 &&
+    metricsText.includes('urbivue_sensors_total') &&
+    metricsText.includes('urbivue_db_up 1'),
+);
+ok('metrics count ingested readings', /urbivue_readings_ingested_total [1-9]/.test(metricsText));
+
 // --- analytics ---------------------------------------------------------------
 const overview = await req('/analytics/overview', { token: admin });
 ok(

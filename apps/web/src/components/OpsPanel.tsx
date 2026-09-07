@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { SensorChart } from './SensorChart';
 
 const POLL_MS = 8000;
 
@@ -31,6 +32,15 @@ interface CitizenReport {
   matchedAssetCode: string | null;
   duplicateCount: number;
   createdAt: string;
+}
+
+interface Sensor {
+  id: string;
+  externalId: string;
+  kind: string;
+  unit: string;
+  lastSeenAt: string | null;
+  lastValue: string | null;
 }
 
 interface Overview {
@@ -70,11 +80,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 /** Bottom operations panel: live incidents and active work orders. */
 export function OpsPanel() {
-  const [tab, setTab] = useState<'incidents' | 'workOrders' | 'reports' | 'overview'>('incidents');
+  const [tab, setTab] = useState<'incidents' | 'workOrders' | 'reports' | 'sensors' | 'overview'>(
+    'incidents',
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [reports, setReports] = useState<CitizenReport[]>([]);
+  const [sensors, setSensors] = useState<Sensor[]>([]);
+  const [chartSensor, setChartSensor] = useState<string | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
 
   const refresh = useCallback(() => {
@@ -86,6 +100,9 @@ export function OpsPanel() {
       .catch(() => undefined);
     api<CitizenReport[]>('/reports?status=active')
       .then(setReports)
+      .catch(() => undefined);
+    api<Sensor[]>('/sensors')
+      .then(setSensors)
       .catch(() => undefined);
     api<Overview>('/analytics/overview')
       .then(setOverview)
@@ -139,6 +156,9 @@ export function OpsPanel() {
           </button>
           <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>
             Reports <strong>{reports.length}</strong>
+          </button>
+          <button className={tab === 'sensors' ? 'active' : ''} onClick={() => setTab('sensors')}>
+            Sensors <strong>{sensors.length}</strong>
           </button>
           <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>
             Overview
@@ -234,6 +254,45 @@ export function OpsPanel() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!collapsed && tab === 'sensors' && (
+        <div className="incidents-list">
+          {sensors.length === 0 && <p className="muted">No sensors registered</p>}
+          {sensors.map((s) => {
+            const ageMs = s.lastSeenAt ? Date.now() - Date.parse(s.lastSeenAt) : null;
+            const fresh = ageMs !== null && ageMs < 2 * 3600_000;
+            return (
+              <div key={s.id}>
+                <div className="incident-row">
+                  <span
+                    className="dot"
+                    style={{
+                      background: fresh ? '#16a34a' : ageMs !== null ? '#f59e0b' : '#9ca3af',
+                    }}
+                  />
+                  <div className="incident-main">
+                    <div className="incident-title">
+                      {s.externalId} · {s.kind.replace(/_/g, ' ')}
+                    </div>
+                    <div className="muted">
+                      {s.lastValue != null
+                        ? `${Number(Number(s.lastValue).toPrecision(4))} ${s.unit}`
+                        : 'no readings'}
+                      {s.lastSeenAt && ` · last seen ${new Date(s.lastSeenAt).toLocaleString()}`}
+                    </div>
+                  </div>
+                  <div className="incident-actions">
+                    <button onClick={() => setChartSensor(chartSensor === s.id ? null : s.id)}>
+                      {chartSensor === s.id ? 'Hide' : 'Chart'}
+                    </button>
+                  </div>
+                </div>
+                {chartSensor === s.id && <SensorChart sensorId={s.id} unit={s.unit} />}
+              </div>
+            );
+          })}
         </div>
       )}
 
