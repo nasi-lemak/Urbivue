@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import { LANGS, useI18n } from '../lib/i18n';
 
 /** Public citizen portal: no login — flood status, toilets, accessibility, reporting. */
 
@@ -55,6 +56,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export function Portal() {
+  const { t, lang, setLang } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -197,7 +199,9 @@ export function Portal() {
         if (!p) return;
         new maplibregl.Popup()
           .setLngLat(e.lngLat)
-          .setHTML(`<b>${p.name}</b><br/>River level: ${p.level ?? '—'} m (${p.status})`)
+          .setHTML(
+            `<b>${p.name}</b><br/>${t('popup.riverLevel')}: ${p.level ?? '—'} m (${p.status})`,
+          )
           .addTo(map);
       });
     }
@@ -226,14 +230,16 @@ export function Portal() {
       map.on('click', 'toilets-circle', (e) => {
         const p = e.features?.[0]?.properties;
         if (!p) return;
-        const cleaned = p.lastCleanedAt ? new Date(p.lastCleanedAt).toLocaleString() : 'no record';
+        const cleaned = p.lastCleanedAt
+          ? new Date(p.lastCleanedAt).toLocaleString()
+          : t('popup.noRecord');
         new maplibregl.Popup()
           .setLngLat(e.lngLat)
           .setHTML(
-            `<b>${p.name}</b><br/>Hours: ${p.openingHours ?? '—'}<br/>` +
-              `Accessible fixtures: ${p.accessibleFixtures ?? 0}<br/>` +
-              `Rating: ${p.avgRating ?? '—'} (${p.ratingCount ?? 0})<br/>` +
-              `Last cleaned: ${cleaned}`,
+            `<b>${p.name}</b><br/>${t('popup.hours')}: ${p.openingHours ?? '—'}<br/>` +
+              `${t('popup.accessibleFixtures')}: ${p.accessibleFixtures ?? 0}<br/>` +
+              `${t('popup.rating')}: ${p.avgRating ?? '—'} (${p.ratingCount ?? 0})<br/>` +
+              `${t('popup.lastCleaned')}: ${cleaned}`,
           )
           .addTo(map);
       });
@@ -287,7 +293,7 @@ export function Portal() {
   const submitReport = async () => {
     setSubmitError(null);
     if (!location) {
-      setSubmitError('Tap "Pick location", then tap the map.');
+      setSubmitError(t('report.needLocation'));
       return;
     }
     try {
@@ -309,7 +315,7 @@ export function Portal() {
       markerRef.current?.remove();
       setLocation(null);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Submit failed');
+      setSubmitError(err instanceof Error ? err.message : t('report.submitFailed'));
     }
   };
 
@@ -329,45 +335,52 @@ export function Portal() {
     <div className="portal">
       {banner && (
         <div className={`portal-banner ${banner}`}>
-          {banner === 'danger'
-            ? '⚠ Flood danger: river levels critically high. Avoid low-lying areas.'
-            : '⚠ Flood advisory: river levels elevated. Stay alert near waterways.'}
+          {banner === 'danger' ? t('banner.danger') : t('banner.warning')}
         </div>
       )}
       <div className="portal-body">
         <aside className="portal-panel">
-          <h1>Urbivue</h1>
-          <p className="muted">City services — public map</p>
+          <div className="portal-title-row">
+            <h1>Urbivue</h1>
+            <div className="lang-switch">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  className={lang === l.code ? 'active' : ''}
+                  onClick={() => setLang(l.code)}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="muted">{t('portal.tagline')}</p>
 
           <section>
-            <h2>Legend</h2>
+            <h2>{t('portal.legend')}</h2>
             <div className="legend-row">
-              <span className="dot" style={{ background: '#0d9488' }} /> Public toilet
+              <span className="dot" style={{ background: '#0d9488' }} /> {t('legend.toilet')}
             </div>
             <div className="legend-row">
-              <span className="dot" style={{ background: '#16a34a' }} /> Accessible / river normal
+              <span className="dot" style={{ background: '#16a34a' }} /> {t('legend.green')}
             </div>
             <div className="legend-row">
-              <span className="dot" style={{ background: '#f59e0b' }} /> Minor issues / river
-              warning
+              <span className="dot" style={{ background: '#f59e0b' }} /> {t('legend.amber')}
             </div>
             <div className="legend-row">
-              <span className="dot" style={{ background: '#dc2626' }} /> Non-compliant / river
-              danger
+              <span className="dot" style={{ background: '#dc2626' }} /> {t('legend.red')}
             </div>
           </section>
 
           <section>
-            <h2>Report an issue</h2>
+            <h2>{t('report.title')}</h2>
             {submitResult ? (
               <div className="flash">
-                {submitResult.duplicateOfId
-                  ? 'Thanks — this issue was already reported and your report has been linked to it.'
-                  : 'Thanks — your report is in.'}
+                {submitResult.duplicateOfId ? t('report.thanksDuplicate') : t('report.thanks')}
                 <br />
-                Tracking ID: <code>{submitResult.id}</code>
+                {t('report.trackingId')}: <code>{submitResult.id}</code>
                 <label style={{ marginTop: '0.5rem' }}>
-                  Add a photo (optional)
+                  {t('report.addPhoto')}
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -380,49 +393,49 @@ export function Portal() {
                         method: 'POST',
                         body: form,
                       });
-                      window.alert(res.ok ? 'Photo attached — thank you.' : 'Photo upload failed.');
+                      window.alert(res.ok ? t('report.photoOk') : t('report.photoFail'));
                     }}
                   />
                 </label>
                 <button style={{ marginTop: '0.5rem' }} onClick={() => setSubmitResult(null)}>
-                  Report another
+                  {t('report.another')}
                 </button>
               </div>
             ) : (
               <>
                 <label>
-                  Category
+                  {t('report.category')}
                   <select value={category} onChange={(e) => setCategory(e.target.value)}>
                     {categories.map((c) => (
                       <option key={c.key} value={c.key}>
-                        {c.name}
+                        {t(`category.${c.key}`, c.name)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  What's wrong?
+                  {t('report.whatsWrong')}
                   <textarea
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the issue (at least 10 characters)"
+                    placeholder={t('report.describePlaceholder')}
                   />
                 </label>
                 <label>
-                  Phone or email (optional — for status updates)
+                  {t('report.contact')}
                   <input
                     value={contact}
                     onChange={(e) => setContact(e.target.value)}
-                    placeholder="e.g. +60 12-345 6789"
+                    placeholder={t('report.contactPlaceholder')}
                   />
                 </label>
                 <button className={picking ? 'primary' : ''} onClick={() => setPicking(!picking)}>
                   {location
-                    ? '📍 Location set — pick again'
+                    ? t('report.locationSet')
                     : picking
-                      ? 'Tap the map…'
-                      : 'Pick location on map'}
+                      ? t('report.tapMap')
+                      : t('report.pickLocation')}
                 </button>
                 {submitError && <div className="error">{submitError}</div>}
                 <button
@@ -430,26 +443,29 @@ export function Portal() {
                   style={{ marginTop: '0.5rem', width: '100%' }}
                   onClick={submitReport}
                 >
-                  Submit report
+                  {t('report.submit')}
                 </button>
               </>
             )}
           </section>
 
           <section>
-            <h2>Track a report</h2>
+            <h2>{t('track.title')}</h2>
             <input
-              placeholder="Tracking ID"
+              placeholder={t('report.trackingId')}
               value={trackId}
               onChange={(e) => setTrackId(e.target.value)}
             />
             <button style={{ marginTop: '0.4rem' }} onClick={track} disabled={!trackId.trim()}>
-              Check status
+              {t('track.check')}
             </button>
             {tracked && (
               <p className="muted" style={{ marginTop: '0.4rem' }}>
-                Status: <strong>{tracked.status.replace(/_/g, ' ')}</strong>
-                {tracked.category ? ` · ${tracked.category.replace(/_/g, ' ')}` : ''}
+                {t('track.status')}:{' '}
+                <strong>{t(`status.${tracked.status}`, tracked.status.replace(/_/g, ' '))}</strong>
+                {tracked.category
+                  ? ` · ${t(`category.${tracked.category}`, tracked.category.replace(/_/g, ' '))}`
+                  : ''}
               </p>
             )}
           </section>

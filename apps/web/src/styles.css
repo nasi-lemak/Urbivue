@@ -492,3 +492,23 @@ label {
   background: #fef2f2;
   border-bottom: 1px solid #fecaca;
 }
+
+.portal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.lang-switch {
+  display: flex;
+  gap: 0.25rem;
+}
+.lang-switch button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+}
+.lang-switch button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
