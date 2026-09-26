@@ -57,6 +57,11 @@ jobs:
       - name: Firmware core tests (Rust)
         run: cargo test --manifest-path firmware/rust/Cargo.toml
 
+      - name: Firmware SCL3300 frame tests (C++, host)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror firmware/common/test_scl3300_frames.cpp -o /tmp/scl3300_test
+          /tmp/scl3300_test
+
       - name: Database migrations + seed (against live PostGIS/Timescale)
         run: |
           pnpm db:migrate

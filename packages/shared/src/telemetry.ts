@@ -14,6 +14,7 @@ export const SENSOR_KINDS = [
   'power_draw',
   'vehicle_count',
   'occupancy',
+  'temperature',
 ] as const;
 export type SensorKind = (typeof SENSOR_KINDS)[number];
 

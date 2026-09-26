@@ -377,6 +377,7 @@ const SEED_SENSORS = [
   { externalId: 'PMP-001-AMP', kind: 'current', unit: 'A', assetCode: 'PMP-001' },
   { externalId: 'SMP-001', kind: 'sump_level', unit: 'm', assetCode: 'PS-001' },
   { externalId: 'TLT-001', kind: 'tilt', unit: 'deg', assetCode: 'SLP-001' },
+  { externalId: 'TLT-001-TEMP', kind: 'temperature', unit: '°C', assetCode: 'SLP-001' },
   { externalId: 'PZ-001', kind: 'piezometer', unit: 'kPa', assetCode: 'SLP-001' },
   { externalId: 'LP-001-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-001' },
   { externalId: 'LP-002-PWR', kind: 'power_draw', unit: 'W', assetCode: 'LP-002' },
@@ -460,6 +461,17 @@ const SEED_ALERT_RULES = [
     kind: 'threshold',
     sensorKind: 'tilt',
     params: { operator: 'gt', value: 2.0, clear: 1.5 },
+    severity: 'warning',
+  },
+  {
+    // Slope monitors wake every 10 min; 45 min tolerates a few missed
+    // publishes before flagging a dead life-safety sensor.
+    module: 'slopes',
+    key: 'slopes.sensor_silent',
+    name: 'Slope monitor silent',
+    kind: 'absence',
+    sensorKind: 'tilt',
+    params: { minutes: 45 },
     severity: 'warning',
   },
   {

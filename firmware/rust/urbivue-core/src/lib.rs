@@ -16,6 +16,7 @@ pub mod median;
 pub mod power;
 pub mod pzem;
 pub mod rain;
+pub mod scl3300;
 pub mod tilt;
 pub mod traffic;
 pub mod water;

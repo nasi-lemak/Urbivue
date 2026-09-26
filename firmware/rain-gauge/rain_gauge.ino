@@ -2,9 +2,11 @@
  * Urbivue rain gauge prototype.
  * Sensor kind: rainfall (mm/h) — feeds intense-rain rule + slope rain-watch.
  *
- * Hardware: ESP32 + tipping-bucket gauge (reed switch to GPIO27, internal
- * pull-up; each tip = MM_PER_TIP, typically 0.2794 mm — check your bucket's
- * datasheet). Mount level, away from walls/trees, funnel unobstructed.
+ * Hardware: ESP32 + tipping-bucket gauge with pulse (reed switch) output to
+ * GPIO27, internal pull-up. MM_PER_TIP is the bucket's rainfall per tip:
+ * 0.2 mm for the recommended professional stainless gauge, 0.2794 mm for a
+ * Misol WH-SP-RG — confirm with the seller/datasheet. Mount level, away from
+ * walls/trees, funnel unobstructed.
  *
  * Reports the last-minute tip count scaled to mm/h, every 60 s.
  */
@@ -12,7 +14,7 @@
 
 const UrbivueConfig CFG = {"YOUR_WIFI", "YOUR_PASS", "192.168.1.10", 1883, "rg-station-01"};
 const char* SENSOR_ID = "RG-001";
-const float MM_PER_TIP = 0.2794f;
+const float MM_PER_TIP = 0.2f;  // Misol WH-SP-RG: 0.2794f
 const uint32_t REPORT_MS = 60000;
 const int TIP_PIN = 27;
 
