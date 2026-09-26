@@ -20,6 +20,12 @@ Every prototype shares a core (≈ USD 15 before the sensing element):
 | Buck converter (12/24 V → 5 V) or 18650 + solar charge board | Power | 4 |
 | Mounting hardware, wire, heat-shrink | Installation | 2 |
 
+Board notes: any WROOM-32/32D/32E DevKit works (avoid **32U** — no onboard
+antenna). For the **battery-powered nodes** (bin fill, slope monitor) prefer the
+**ESP32-C3 Super Mini** instead (~USD 1–2, smaller, leaner deep-sleep draw at
+the board level — the number that sets months-per-charge); both sketches
+support it out of the box, selecting pins from the compile target.
+
 Firmware contract (all sketches): connect Wi-Fi → connect MQTT → publish
 `{"value": x}` on the sensor's topic at the device's cadence. The platform does
 the rest — storage, rules, incidents, dashboards.
@@ -81,7 +87,8 @@ Vendor platforms:  smart-lighting / bin / traffic vendor cloud --webhook--> POST
   (~USD 60–150) in a standpipe via ADS1115 ADC (~USD 4).
 - **Install:** capture the zero baseline at commissioning (hold BOOT 5 s); the
   platform's rate-of-change rule then watches Δtilt, so absolute accuracy
-  matters less than stability. Solar + 18650; deep-sleeps 10 min.
+  matters less than stability. Solar + 18650; deep-sleeps 10 min (C3 Super
+  Mini recommended — see §1).
 - **Honest limit:** a $3 MEMS chip detects gross movement (0.1–0.2° resolution),
   not the millimeter creep a geotechnical inclinometer sees. Treat it as an
   early-warning tripwire on already-ranked slopes; instrument-grade sensors
@@ -93,8 +100,8 @@ Vendor platforms:  smart-lighting / bin / traffic vendor cloud --webhook--> POST
 - **Sensing:** HC-SR04P ultrasonic (~USD 2) inside the lid, pointing down.
   Measure empty-bin depth → `BIN_DEPTH_M`.
 - **Install:** drill + gland through the lid, sensor face flush; 18650 cell,
-  30-min deep-sleep cadence runs months. Expect abuse: zip-tie strain relief,
-  glue everything.
+  30-min deep-sleep cadence runs months (C3 Super Mini recommended — see §1).
+  Expect abuse: zip-tie strain relief, glue everything.
 - **BOM beyond core:** sensor $2, battery holder $3. **Total ≈ USD 20/bin** —
   which is why the platform also supports unsensored bins on fixed routes;
   sensor only the high-variance locations.

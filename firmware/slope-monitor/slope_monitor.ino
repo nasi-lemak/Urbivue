@@ -3,9 +3,10 @@
  * Sensor kinds: tilt (deg) + optional piezometer (kPa) — feeds the tilt
  * threshold, 24 h rate-of-change, and groundwater-pressure rules.
  *
- * Hardware: ESP32 +
- *  - tilt: MPU-6050 accelerometer (I2C SDA=21 SCL=22), potted in epoxy
- *    inside an IP67 box anchored to the slope face or a short grouted rod.
+ * Hardware: ESP32 or ESP32-C3 (Super Mini preferred: cheaper, leaner
+ * deep-sleep draw on battery) +
+ *  - tilt: MPU-6050 accelerometer (I2C, pins per board below), potted in
+ *    epoxy inside an IP67 box anchored to the slope face or a grouted rod.
  *  - piezometer (optional): 4-20 mA pressure transducer in a standpipe,
  *    165 ohm shunt into ADS1115 (also I2C). Set HAS_PIEZO accordingly.
  *
@@ -24,7 +25,14 @@ const char* PIEZO_SENSOR_ID = "PZ-001";
 const bool HAS_PIEZO = false;
 const uint64_t SLEEP_US = 10ULL * 60 * 1000000;  // 10 min
 
-const int MPU_ADDR = 0x68, ADS_ADDR = 0x48, BASELINE_PIN = 0;
+const int MPU_ADDR = 0x68, ADS_ADDR = 0x48;
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+// C3 Super Mini: BOOT button is GPIO9, so I2C moves off the core defaults.
+const int SDA_PIN = 6, SCL_PIN = 7, BASELINE_PIN = 9;
+#else
+// Classic ESP32 DevKit: standard I2C pins, BOOT button is GPIO0.
+const int SDA_PIN = 21, SCL_PIN = 22, BASELINE_PIN = 0;
+#endif
 Preferences prefs;
 UrbivueDevice device(CFG);
 
@@ -79,7 +87,7 @@ float readPiezoKpa() {
 }
 
 void setup() {
-  Wire.begin();
+  Wire.begin(SDA_PIN, SCL_PIN);
   prefs.begin("urbivue");
   pinMode(BASELINE_PIN, INPUT_PULLUP);
   mpuWake();

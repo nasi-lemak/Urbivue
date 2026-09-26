@@ -2,9 +2,14 @@
  * Urbivue bin fill-level prototype.
  * Sensor kind: fill_level (%) — feeds the near-full rule + collection list.
  *
- * Hardware: ESP32 + HC-SR04P (3.3 V) or JSN-SR04T mounted inside the bin
- * lid pointing down (TRIG=GPIO25, ECHO=GPIO26). BIN_DEPTH_M is lid sensor
- * face to bin floor, measured with the bin empty on installation.
+ * Hardware: ESP32 or ESP32-C3 + HC-SR04P (3.3 V) or JSN-SR04T mounted
+ * inside the bin lid pointing down. BIN_DEPTH_M is lid sensor face to bin
+ * floor, measured with the bin empty on installation.
+ *
+ * Board choice: the C3 "Super Mini" is preferred for battery nodes — it is
+ * cheaper and its board-level deep-sleep draw is lower than a classic
+ * DevKit's, which is what sets months-per-charge here. Pins are selected
+ * automatically from the board target below.
  *
  * Battery powered: measures, publishes, deep-sleeps 30 minutes. At that
  * cadence a 18650 cell lasts months; pair with the estimated-fill fallback
@@ -17,7 +22,11 @@ const char* SENSOR_ID = "BIN-001-FILL";
 const float BIN_DEPTH_M = 0.95f;
 const uint64_t SLEEP_US = 30ULL * 60 * 1000000;
 
-const int TRIG = 25, ECHO = 26;
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+const int TRIG = 3, ECHO = 4;  // ESP32-C3 Super Mini
+#else
+const int TRIG = 25, ECHO = 26;  // classic ESP32 DevKit
+#endif
 UrbivueDevice device(CFG);
 
 float readDistanceM() {

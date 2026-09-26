@@ -19,12 +19,18 @@ payload `{"value": <number>}`) using the shared plumbing in
 
 1. Arduino IDE (or `arduino-cli`) with the **ESP32 board package** and the
    **PubSubClient** library installed.
-2. Open a sketch, fill in the `CFG` block (Wi-Fi, broker host, device name) and the
+2. Pick the board: classic **ESP32 DevKit (WROOM-32/32D/32E)** works for every
+   sketch; for the battery-powered nodes (`bin-fill/`, `slope-monitor/`) the
+   **ESP32-C3 Super Mini** is preferred — cheaper and a leaner board-level
+   deep-sleep draw. Those two sketches select their pins automatically from the
+   compile target (select "ESP32C3 Dev Module" in the IDE); avoid WROOM-**32U**
+   modules (no onboard antenna).
+3. Open a sketch, fill in the `CFG` block (Wi-Fi, broker host, device name) and the
    `SENSOR_ID` you registered in Urbivue (see the provisioning workflow in
    [`docs/HARDWARE.md`](../docs/HARDWARE.md)).
-3. Set device-specific constants marked "measure on installation" (mount height,
+4. Set device-specific constants marked "measure on installation" (mount height,
    bin depth, CT calibration).
-4. Flash over USB; watch the serial monitor for the first publish, then confirm
+5. Flash over USB; watch the serial monitor for the first publish, then confirm
    the reading in Urbivue (`GET /api/sensors` shows last value + last seen).
 
 ## Status & scope
